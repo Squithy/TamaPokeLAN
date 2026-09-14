@@ -10,8 +10,20 @@
 #include <chrono>
 #include <string>
 #include <deque>
+#ifdef _WIN32
+// MinGW targets native Windows: no sys/select.h, and select()/read() do not
+// work on a console handle the POSIX way even if they existed. execv() is
+// _execv() here instead (process.h), which is close enough for "close and
+// relaunch" -- it does not need to replace the process image exactly.
+#include <process.h>
+#include <iostream>
+#include <mutex>
+#include <thread>
+#define execv _execv
+#else
 #include <unistd.h>
 #include <sys/select.h>
+#endif
 
 // --- Arduino runtime globals ---
 uint32_t g_seed = 0xC0FFEE;
@@ -27,6 +39,28 @@ void FakeESP::restart() { Serial.println("emu: ESP.restart() -> exiting"); exit(
 // --- stdin-backed serial ---
 static std::deque<std::string> g_lines;
 static std::string g_partial;
+#ifdef _WIN32
+// select() on fd 0 is a socket-only operation in Winsock, and there is no
+// console equivalent that is both non-blocking and line-buffered. A
+// background thread blocking on std::getline sidesteps that entirely, and
+// works the same whether stdin is a real console or a redirected file/pipe.
+static std::deque<std::string> g_stdinQueue;
+static std::mutex g_stdinMutex;
+static void stdinReaderThread() {
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    std::lock_guard<std::mutex> lock(g_stdinMutex);
+    g_stdinQueue.push_back(line);
+  }
+}
+static void pumpStdin() {
+  std::lock_guard<std::mutex> lock(g_stdinMutex);
+  while (!g_stdinQueue.empty()) {
+    g_lines.push_back(g_stdinQueue.front());
+    g_stdinQueue.pop_front();
+  }
+}
+#else
 static void pumpStdin() {
   fd_set fds;
   FD_ZERO(&fds);
@@ -43,6 +77,7 @@ static void pumpStdin() {
     FD_ZERO(&fds); FD_SET(0, &fds); tv = { 0, 0 };
   }
 }
+#endif
 // --- simulating a crash ---
 //
 // The board keeps its breadcrumb in RTC memory, which survives a panic but not
@@ -434,6 +469,10 @@ int main(int argc, char **argv) {
   printf("Type serial commands here (STATS, IV 31 31 31 31, EGG 150 1, LVL 73, WIPE...)\n");
   printf("Time scale x%u (suspended while you touch). Ctrl-C or close the window to quit.\n\n",
          emuTimeScale());
+
+#ifdef _WIN32
+  std::thread(stdinReaderThread).detach();
+#endif
 
   setup();
 
