@@ -4186,6 +4186,8 @@ static void btlLinkPoll() {
     audioMusic(btlWon ? MUS_VICTORY : MUS_NONE);
     if (btlWon) sfxPlay(SFX_VICTORY);
     btlSay("%s", btlWon ? T(S_BTL_WIN) : T(S_BTL_LOSE));
+    const uint8_t *rivalMac = linkNowPeerMac();
+    if (rivalMac) pet.recordRivalResult(rivalMac, lan.peerName, btlWon);
   }
 }
 
@@ -4420,7 +4422,11 @@ static void btlResolve(uint8_t yourMove) {
     if (btlWon) sfxPlay(SFX_VICTORY);
     // Tell the peer before anything else: if we stop here without sending, the
     // other device sits on a battle that will never take another turn.
-    if (btlLink && btlLinkHost) lan.sendEnd(btlWon);
+    if (btlLink && btlLinkHost) {
+      lan.sendEnd(btlWon);
+      const uint8_t *rivalMac = linkNowPeerMac();
+      if (rivalMac) pet.recordRivalResult(rivalMac, lan.peerName, btlWon);
+    }
     if (btlLink) { btlSay("%s", btlWon ? T(S_BTL_WIN) : T(S_BTL_LOSE)); return; }
     // A wild win reports its drops as narration rather than on the win screen:
     // that screen is the badge ceremony, and it has no badge to show.
@@ -5551,6 +5557,24 @@ void renderLan() {
     gfx->setTextSize(2);
     gfx->setCursor(CX - (int)strlen(l) * 6, 150);
     gfx->print(l);
+
+    // Remembered by the peer's MAC (recordRivalResult()), not by name -- a
+    // rival who renames themselves between fights keeps their score.
+    {
+      const uint8_t *rivalMac = linkNowPeerMac();
+      const RivalRecord *riv = rivalMac ? pet.findRival(rivalMac) : nullptr;
+      uint16_t wins = riv ? riv->wins : 0, losses = riv ? riv->losses : 0;
+      gfx->setTextSize(2);
+      snprintf(l, sizeof(l), T(wins == 1 ? S_LAN_DEFEATED_1 : S_LAN_DEFEATED_N), wins);
+      gfx->setTextColor(UI_BAR_OK);
+      gfx->setCursor(CX - (int)strlen(l) * 6, 170);
+      gfx->print(l);
+      snprintf(l, sizeof(l), T(losses == 1 ? S_LAN_LOST_1 : S_LAN_LOST_N), losses);
+      gfx->setTextColor(UI_BAR_BAD);
+      gfx->setCursor(CX - (int)strlen(l) * 6, 190);
+      gfx->print(l);
+    }
+
     gfx->fillRoundRect(120, 220, 226, 56, 12, UI_BAR_OK);
     gfx->drawRoundRect(120, 220, 226, 56, 12, UI_INK);
     gfx->setTextColor(UI_BG_DAY);

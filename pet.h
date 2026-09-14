@@ -95,6 +95,19 @@ uint8_t nextAvailableRegion(uint8_t from);
 // and by every evolution.
 bool speciesShowable(int16_t d);
 
+// A remembered LAN opponent. Keyed by the peer's MAC (see recordRivalResult()
+// in pet.cpp and linkNowPeerMac() in linknow.h), never by name -- a player can
+// rename themselves between fights without the score against them resetting.
+// An all-zero mac means "unused slot": a real ESP32 MAC is never literally
+// zero, so no separate flag is needed to tell an empty slot from a used one.
+#define RIVAL_CAP 10
+struct RivalRecord {
+  uint8_t mac[6] = { 0 };
+  char name[12] = "";     // matches LINK_NAME_LEN without pet.h depending on link.h
+  uint16_t wins = 0;
+  uint16_t losses = 0;
+};
+
 class Pet {
 public:
   // Estadisticas 0..100
@@ -249,6 +262,14 @@ public:
     trainerName[sizeof(trainerName) - 1] = 0;
     save();
   }
+
+  // The last RIVAL_CAP LAN opponents, most-recently-played first. Its own NVS
+  // key, purely additive, same reasoning as the box: this does not need the
+  // checkpoint's torn-write protection -- losing the very latest update to a
+  // win/loss counter on a power cut is a cosmetic loss, not a mixed creature.
+  RivalRecord rivals[RIVAL_CAP];
+  const RivalRecord *findRival(const uint8_t mac[6]) const;
+  void recordRivalResult(const uint8_t mac[6], const char *name, bool won);
 
   // Which generation eggs come from. Player-wide, like the badges: it outlives
   // every creature, so newEgg() must never reset it.

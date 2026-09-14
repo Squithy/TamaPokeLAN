@@ -154,5 +154,7 @@ void linkNowEnd() {
   gLink = nullptr;
 }
 
+const uint8_t *linkNowPeerMac() { return gLocked ? gPeer : nullptr; }
+
 bool linkNowUp() { return gUp; }
 const LinkNowStats &linkNowStats() { return gStats; }

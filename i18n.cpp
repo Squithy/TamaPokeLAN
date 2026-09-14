@@ -51,7 +51,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "MOCHILA", "MOCHILA VACIA", "EXPLORAR", "Aparece un %s salvaje!", "%s ha huido!",
     "Has escapado!", "No has podido escapar!", "Lanzas una %s", "%s capturado!", "Se ha soltado!",
     "Usas %s", "No ha hecho nada", "Encuentras %s!", "CRIAR A ESTE", "CRIANDO",
-    "SALIR", "Salir de la lucha?", },
+    "SALIR", "Salir de la lucha?",
+    "vencido: %u vez", "vencido: %u veces", "perdiste: %u vez", "perdiste: %u veces", },
   // ---------------- EN ----------------
   {
     "Evolving!", "Yum yum!", "It likes it!", "It's hungry!", "Needs a bath!",
@@ -95,7 +96,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "BAG", "BAG EMPTY", "EXPLORE", "A wild %s appeared!", "%s fled!",
     "You got away!", "You could not get away!", "You threw a %s", "%s was caught!", "It broke free!",
     "Used %s", "It had no effect", "Found %s!", "RAISE THIS ONE", "RAISING",
-    "QUIT", "Leave the battle?", },
+    "QUIT", "Leave the battle?",
+    "defeated: %u time", "defeated: %u times", "lost to: %u time", "lost to: %u times", },
   // ---------------- FR ----------------
   {
     "Il evolue!", "Miam miam!", "Il aime ca!", "Il a faim!", "Besoin d'un bain!",
@@ -138,7 +140,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "SAC", "SAC VIDE", "EXPLORER", "Un %s sauvage apparait!", "%s a fui!",
     "Tu as pris la fuite!", "Impossible de fuir!", "Tu lances une %s", "%s est capture!", "Il s est libere!",
     "Tu utilises %s", "Aucun effet", "Tu trouves %s!", "ELEVER CELUI-CI", "EN ELEVAGE",
-    "QUITTER", "Quitter le combat?", },
+    "QUITTER", "Quitter le combat?",
+    "vaincu: %u fois", "vaincu: %u fois", "perdu contre: %u fois", "perdu contre: %u fois", },
   // ---------------- DE ----------------
   {
     "Entwickelt sich!", "Mampf mampf!", "Gefaellt ihm!", "Hat Hunger!", "Braucht ein Bad!",
@@ -181,7 +184,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "BEUTEL", "BEUTEL LEER", "ERKUNDEN", "Ein wildes %s erscheint!", "%s ist geflohen!",
     "Du bist entkommen!", "Flucht gescheitert!", "Du wirfst einen %s", "%s gefangen!", "Es ist entkommen!",
     "%s benutzt", "Keine Wirkung", "%s gefunden!", "DIESES AUFZIEHEN", "WIRD AUFGEZOGEN",
-    "VERLASSEN", "Kampf verlassen?", },
+    "VERLASSEN", "Kampf verlassen?",
+    "besiegt: %u Mal", "besiegt: %u Mal", "verloren gegen: %u Mal", "verloren gegen: %u Mal", },
   // ---------------- IT ----------------
   {
     "Si evolve!", "Gnam gnam!", "Gli piace!", "Ha fame!", "Vuole un bagno!",
@@ -224,7 +228,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "ZAINO", "ZAINO VUOTO", "ESPLORA", "Appare un %s selvatico!", "%s e fuggito!",
     "Sei riuscito a fuggire!", "Non sei riuscito a fuggire!", "Lanci una %s", "%s catturato!", "Si e liberato!",
     "Usi %s", "Nessun effetto", "Trovi %s!", "ALLEVA QUESTO", "IN ALLEVAMENTO",
-    "ESCI", "Uscire dalla lotta?", },
+    "ESCI", "Uscire dalla lotta?",
+    "battuto: %u volta", "battuto: %u volte", "perso contro: %u volta", "perso contro: %u volte", },
   // ---------------- PT ----------------
   {
     "Evoluindo!", "Nham nham!", "Ele gosta!", "Esta com fome!", "Precisa de banho!",
@@ -267,7 +272,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "MOCHILA", "MOCHILA VAZIA", "EXPLORAR", "Um %s selvagem aparece!", "%s fugiu!",
     "Conseguiste fugir!", "Nao conseguiste fugir!", "Lancas uma %s", "%s capturado!", "Escapou!",
     "Usas %s", "Sem efeito", "Encontras %s!", "CRIAR ESTE", "A CRIAR",
-    "SAIR", "Sair da luta?", },
+    "SAIR", "Sair da luta?",
+    "derrotado: %u vez", "derrotado: %u vezes", "perdeste: %u vez", "perdeste: %u vezes", },
 };
 
 // Nombres de medalla en sus tres longitudes [idioma][medalla].

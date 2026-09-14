@@ -152,6 +152,13 @@ enum StrId : uint8_t {
   // release dialog does.
   S_LAN_QUIT,       // the button, once the wait has run long enough to show it
   S_LAN_QUIT_Q,     // ...and the confirmation
+  // The rival record on the LAN pairing screen. Two variants each because the
+  // table has no pluralization rule of its own -- some languages need a
+  // different word at exactly 1 (English "time"/"times"), some do not
+  // (French "fois", German "Mal" do not change), so each language just
+  // writes both and the render code picks by count == 1.
+  S_LAN_DEFEATED_1, S_LAN_DEFEATED_N,
+  S_LAN_LOST_1, S_LAN_LOST_N,
   STR_COUNT
 };
 

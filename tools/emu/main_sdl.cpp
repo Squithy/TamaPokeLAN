@@ -347,6 +347,13 @@ static int shotMode(const char *screen, const char *out, int lvl, int iv, int de
     }
     lan.theirsN = 3;
     lan.state = LINK_READY;
+    // A rival record to show on the READY screen -- fabricated the same way
+    // the pairing above is: there is no radio here to key one off for real.
+    void emuSetFakePeerMac(const uint8_t mac[6]);
+    static const uint8_t mistyMac[6] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x00, 0x01 };
+    emuSetFakePeerMac(mistyMac);
+    for (int i = 0; i < 4; i++) pet.recordRivalResult(mistyMac, "MISTY", true);
+    pet.recordRivalResult(mistyMac, "MISTY", false);
     if (!strcmp(screen, "lanbattle")) { startLinkBattle(); }
     else if (!strcmp(screen, "landone")) { lan.state = LINK_DONE; lan.youWon = true; lanOpen = true; }
     else if (!strcmp(screen, "lanwait")) {

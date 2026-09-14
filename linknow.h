@@ -18,6 +18,12 @@ bool linkNowUp();
 // parks bytes in a ring that this drains. Call once a frame, alongside tick().
 void linkNowPoll();
 
+// The locked peer's real MAC, or nullptr before one has been heard from.
+// Deliberately not threaded through Link itself -- link.cpp is pure protocol
+// with no radio knowledge, which is the whole reason it can be tested without
+// a board, and a MAC address is meaningless outside a real ESP-NOW session.
+const uint8_t *linkNowPeerMac();
+
 // Diagnostics for the first bring-up, since none of this has ever run:
 // how many packets arrived, how many were sent, how many the radio reported
 // as undelivered, and how many were dropped for coming from another device.

@@ -174,6 +174,16 @@ bool linkNowBegin(Link *) { return false; }
 void linkNowEnd() {}
 bool linkNowUp() { return false; }
 void linkNowPoll() {}
+// Only settable from shotMode(), for a "lanready"-style screenshot -- the
+// rival record has nothing real to key off without a radio, same reason the
+// pairing itself is faked at the point a real one would have finished.
+static uint8_t gFakePeerMac[6] = { 0 };
+static bool gFakePeerMacSet = false;
+void emuSetFakePeerMac(const uint8_t mac[6]) {
+  memcpy(gFakePeerMac, mac, 6);
+  gFakePeerMacSet = true;
+}
+const uint8_t *linkNowPeerMac() { return gFakePeerMacSet ? gFakePeerMac : nullptr; }
 static LinkNowStats gNoStats;
 const LinkNowStats &linkNowStats() { return gNoStats; }
 // audio is silent here, but the sketch calls these, so they have to exist

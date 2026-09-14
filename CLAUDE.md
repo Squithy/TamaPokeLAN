@@ -528,6 +528,18 @@ to live -- every gesture from the main screen is taken (see below).
 
 Working state, so it survives a closed session. Tick items off as they land.
 
+### Done: a LAN head-to-head record (2026-09-09/10)
+
+Pinned during the first real two-board LAN session, then built the same
+night. `pet.h`'s `RivalRecord { mac[6], name[12], wins, losses }`, keyed by
+the peer's real MAC (`linkNowPeerMac()`, stable per device -- not `Link::id`,
+which a tie-break can flip, and not the typed name, which is not unique).
+`RIVAL_CAP` 10, MRU-ordered, own NVS key (`rivals`, `SAVE_FIELDS` entry, same
+reasoning as the box getting its own key). Hooked into `btlLinkPoll()`'s
+`LINK_DONE` branch on both host and guest, each keeping its own copy rather
+than trusting a value off the wire. Shown on the LAN pairing screen under the
+rival's name, pluralised (`S_LAN_DEFEATED_1/N`, `S_LAN_LOST_1/N`).
+
 ### Found on real two-board LAN testing, real hardware, four boards (2026-09-10)
 
 First actual multiplayer session end to end, and it surfaced three real bugs

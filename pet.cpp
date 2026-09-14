@@ -1077,6 +1077,37 @@ void Pet::setRegion(uint8_t r) {
   save();
 }
 
+const RivalRecord *Pet::findRival(const uint8_t mac[6]) const {
+  static const uint8_t zero[6] = { 0 };
+  if (!memcmp(mac, zero, 6)) return nullptr;   // no real identity to look up
+  for (int i = 0; i < RIVAL_CAP; i++)
+    if (!memcmp(rivals[i].mac, mac, 6)) return &rivals[i];
+  return nullptr;
+}
+
+// Keyed by mac, not by name, so a rename between fights does not reset the
+// score -- the name stored here is only ever what to DISPLAY, refreshed from
+// whatever the peer is currently using. Keeps the table most-recently-played
+// first: a found rival moves to the front, a new one is inserted at the
+// front and evicts whoever was oldest (index RIVAL_CAP-1), rather than
+// growing without bound.
+void Pet::recordRivalResult(const uint8_t mac[6], const char *name, bool won) {
+  static const uint8_t zero[6] = { 0 };
+  if (!memcmp(mac, zero, 6)) return;
+  int idx = -1;
+  for (int i = 0; i < RIVAL_CAP; i++)
+    if (!memcmp(rivals[i].mac, mac, 6)) { idx = i; break; }
+  RivalRecord rec = (idx >= 0) ? rivals[idx] : RivalRecord{};
+  if (idx < 0) memcpy(rec.mac, mac, 6);
+  snprintf(rec.name, sizeof(rec.name), "%s", name);
+  if (won) rec.wins++; else rec.losses++;
+  int shiftEnd = (idx >= 0) ? idx : RIVAL_CAP - 1;
+  for (int i = shiftEnd; i > 0; i--) rivals[i] = rivals[i - 1];
+  rivals[0] = rec;
+  if (prefs.putBytes("rivals", rivals, sizeof(rivals)) != sizeof(rivals))
+    logKeyFailure("pet", "rivals");
+}
+
 void Pet::registerSpecies(int16_t dex) {
   if (dex < 1 || dex > DEX_COUNT) return;
   dexReg[(dex - 1) >> 3] |= (1 << ((dex - 1) & 7));
@@ -2158,6 +2189,9 @@ void Pet::load() {
   // array at its zeroed initialiser, which is exactly "nothing remembered".
   loadBlob(prefs, "eggR", eggByRegion, sizeof(eggByRegion));
   prefs.getString("tnam", trainerName, sizeof(trainerName));
+  // Absent on any save before this existed, which leaves every slot at its
+  // zeroed initialiser -- exactly "no rivals remembered yet".
+  loadBlob(prefs, "rivals", rivals, sizeof(rivals));
   if (avatar >= AVATAR_COUNT) avatar = 0;   // a save from when there were four
   badges = prefs.getUShort("badg", 0);
   badgesHard = prefs.getUShort("badh", 0);
