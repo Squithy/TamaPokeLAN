@@ -220,8 +220,16 @@ While **awake**, per minute:
   at a fixed hour. The light button always overrides: a creature you sent to
   bed stays there regardless of the clock.
 
+### Starting out: region and starter
+
+The very first screen asks which region you're playing — one of the seven with
+a full gym ladder (Kanto, Johto, Hoenn, Sinnoh, Unova, Kalos, Alola) — before
+it asks which of that region's three starters you want. Both choices stick:
+it's where your eggs come from afterwards (changeable later from the egg's
+region pill, see "Choosing your egg's region" below), and it's the one screen
+an existing save never sees again.
+
 ### Eggs & who you get (spawn odds)
-- **First ever pet:** you pick a starter — **Bulbasaur / Charmander / Squirtle**.
 - Hatch the egg: tap it **3×** (or wait — it hatches on its own).
 - Every later egg rolls a **rarity tier** (over the ~79 base forms that come from eggs):
 
@@ -240,7 +248,7 @@ While **awake**, per minute:
   streak/bond down to a best of **1 / 8**. Tracked separately in the dex.
 - Every hatch rolls unique **IVs** (see below) — no two are identical.
 
-### Evolution
+### Evolution and moves
 
 - Triggers when **level ≥ its evolution level** (16 for most base forms; ~25
   for friendship-style like GOLBAT → CROBAT, ~30 for stone-style, ~40 for
@@ -255,43 +263,25 @@ While **awake**, per minute:
   sprite pack is on the card, so evolving can never hand you a creature the
   device cannot draw.
 
-### The three endings, and your party
+Each creature also knows up to **4 moves**, from a pool of 77. Two kinds:
 
-Every life ends one of three ways. You choose and witness each — none ever
-auto-fires:
+- **Level-up moves** are gated: Charizard learns FLAMETHROWER at 34, WING ATTACK
+  at 36, DRAGON RAGE at 54. A hatchling starts with **only** what its species
+  knows at level 1 — a Charmander opens with GROWL alone, and the other three
+  slots stay empty. Crossing a gate fills an empty slot silently; with all four
+  full you get a **prompt** asking which to forget (or to skip it). Offers queue,
+  so coming back to a pet that aged two weeks offline asks one at a time.
+  Evolving keeps the moves it already has, and the new form's gates take over —
+  moves it would have learned *below* your current level are not backfilled,
+  same as the real games.
+- **TMs** have no level gate and are chosen on demand, from the **MOVES** page of
+  the stats card (swipe across, then tap a slot). A move that is *also* a TM
+  keeps its level gate — otherwise every gated move would come free, since most
+  of them were sold as TMs at some point. Levels come from FireRed/LeafGreen,
+  the Kanto games that still gate properly.
 
-- 💛 **Farewell** — offered once it's a **final form** that has lived **3 days**.
-  Triggering it **blesses your next egg**; you can postpone it ("stay together",
-  re-offered a day later).
-- 💔 **Run-away** — if you let **all four stats sit at 0 for a full hour**. A
-  single act of care cancels it. It **curses the next egg** (forces Common).
-  **Does not ask for confirmation, deliberately** — a creature you had to
-  authorise to leave would not really be at stake.
-- 👋 **Release** — long-press the creature on the main screen to let it go on
-  your terms, no conditions.
-
-**Farewell and release bank the creature** into your party (6 slots) instead
-of ending the relationship — species, nickname, shiny status, IVs, training,
-moves, level and its whole care state, frozen until you raise it again.
-**A runaway does not join** — that's what makes it the one ending with a real
-cost — and **neither does an early retire** (see "Retiring a creature early"
-below).
-
-- **Choosing who you raise.** Tap a party slot and press **RAISE THIS ONE**. It
-  is a true *exchange* — the creature on the main screen takes the slot the
-  newcomer vacates — so it needs no free slot and nothing is ever lost. Both
-  keep their full care state, so swapping away and back returns the creature
-  exactly as it was. The one asymmetric case is an **egg**: it has nothing to
-  bank, so its slot simply empties.
-- **RELEASE also works on a banked creature** — tap a party or box slot to open
-  its sheet, where RELEASE removes it permanently. It asks first, every time,
-  and the creature does not fall into the box — the one way to free a slot
-  without something taking its place. A box slot opens the same sheet rather
-  than jumping straight into the party; **TO PARTY** does that instead.
-- With a full party you're taken straight to the party screen to pick who the
-  newcomer replaces, or to let it go. Nothing is ever overwritten silently.
-
-After any ending, a **new egg** appears.
+Moves **freeze when a pet is banked** into the party, alongside its level and
+training: the set you chose while it was alive is what it fights with forever.
 
 ### Wild encounters, catching and the bag
 
@@ -365,12 +355,109 @@ settlement can never list the same item twice.
 
 A new save starts with **5 Poké Balls and 3 Potions**. Stacks cap at 99.
 
-**The Poké Mart**, on the tile axis between EXPLORE and the gyms, turns real
-steps (the board's onboard QMI8658 pedometer) into stock. **1 step = $1**,
-wallet capped at **$999,999** — the real games' own money ceiling, not an
-invented number — and a lifetime step count is tracked separately and never
-spent. Prices are the real Poké Mart's (stable since Gen 1); Master Ball is
-never sold, same as every game:
+The **BAG** menu row is the field bag, and it only offers the vitamins: the pet has
+no persistent HP or ailment outside a fight, so a potion in the field would have
+nothing to act on. Vitamins respect the same **IV-bound training ceiling**
+(`trMaxFor`) as the punching bag and a gym reward — an item that could push past it
+would make the IV roll decorative.
+
+A caught creature takes a party slot, then a box slot, then asks — the same path a
+farewell already uses. It is **not** added to the Pokédex on capture: registration
+means "you raised this", so it happens when you actually make it the one you raise.
+
+### Gym battles and badges
+
+**TMs unlock at level 40**, all at once, and nothing before — so the early game
+runs on level-up moves and cheap early attacks (SCRATCH, PECK, POISON STING,
+BUBBLE, ABSORB, SPARK, FURY ATTACK and the rest), never a borrowed TM.
+
+The first five gym leaders sit at levels **14–43**, so you fight the early
+ladder on what your species actually learns; TMs arrive as you enter the back
+half. A creature retires at 73 and caps at 100. See "Seven gym ladders" above
+for which regions have ladders and how they're verified.
+
+**Gym wins train too**, which is what makes the ladder worth replaying rather than
+a checklist you tick once:
+
+| | Training a win is worth |
+|---|---|
+| Easy | **3–5** points, **+1 per 3 leaders** deeper into the ladder |
+| Hard | **6–10** points, same ladder bonus |
+| Which stat | **random**, but only among stats **not already at their ceiling** |
+| Who gets it | the **live pet**, and only if it was in the squad |
+
+A random stat that landed on a maxed one would silently evaporate, so it never
+picks one; and the IV-bound ceiling above still applies, so a win can never push a
+stat past what its IV allows. Banked members are frozen at what they were banked
+with, and battling already costs the live pet energy — that, not a cooldown, is
+what rate-limits rematching. A fully trained creature is told so.
+
+### LAN battles
+
+Pair two boards over ESP-NOW from the gym ladder's **LAN BATTLE** button — one
+hosts, one joins. Bring whichever team you like: unlike the gym ladders there
+is no level or team-size cap, since you already know what your opponent is
+bringing. A running **head-to-head record** is kept against each rival —
+keyed by their device, not their typed name, so renaming doesn't reset the
+score — and shown on the pairing screen the next time you two fight.
+
+### The three endings, retiring, and your party
+
+Every life ends one of three ways. You choose and witness each — none ever
+auto-fires:
+
+- 💛 **Farewell** — offered once it's a **final form** that has lived **3 days**.
+  Triggering it **blesses your next egg**; you can postpone it ("stay together",
+  re-offered a day later).
+- 💔 **Run-away** — if you let **all four stats sit at 0 for a full hour**. A
+  single act of care cancels it. It **curses the next egg** (forces Common).
+  **Does not ask for confirmation, deliberately** — a creature you had to
+  authorise to leave would not really be at stake.
+- 👋 **Release** — long-press the creature on the main screen to let it go on
+  your terms, no conditions.
+
+**Farewell and release bank the creature** into your party (6 slots) instead
+of ending the relationship — species, nickname, shiny status, IVs, training,
+moves, level and its whole care state, frozen until you raise it again.
+**A runaway does not join** — that's what makes it the one ending with a real
+cost — and **neither does an early retire**:
+
+**RETIRE** on the menu ends a creature whenever you like — what it costs
+depends on whether the farewell had already been earned:
+
+| | |
+|---|---|
+| Retiring one that has **earned** its farewell | free — it is simply the farewell reached by another button. It **joins your party** and **blesses** the next egg |
+| Retiring one that has **not** | it is **gone for good** — not banked, not in the box — the next egg is **neutral** instead of blessed, and evolves **1 day later** than it otherwise would |
+
+That evolution delay does not compound: retiring early more than once in a row
+still costs only one extra day. The confirm dialog states the cost before you
+accept it.
+
+- **Choosing who you raise.** Tap a party slot and press **RAISE THIS ONE**. It
+  is a true *exchange* — the creature on the main screen takes the slot the
+  newcomer vacates — so it needs no free slot and nothing is ever lost. Both
+  keep their full care state, so swapping away and back returns the creature
+  exactly as it was. The one asymmetric case is an **egg**: it has nothing to
+  bank, so its slot simply empties.
+- **RELEASE also works on a banked creature** — tap a party or box slot to open
+  its sheet, where RELEASE removes it permanently. It asks first, every time,
+  and the creature does not fall into the box — the one way to free a slot
+  without something taking its place. A box slot opens the same sheet rather
+  than jumping straight into the party; **TO PARTY** does that instead.
+- With a full party you're taken straight to the party screen to pick who the
+  newcomer replaces, or to let it go. Nothing is ever overwritten silently.
+
+After any ending, a **new egg** appears.
+
+### The Poké Mart
+
+On the tile axis between EXPLORE and the gyms, it turns real steps (the
+board's onboard QMI8658 pedometer) into stock. **1 step = $1**, wallet capped at
+**$999,999** — the real games' own money ceiling, not an invented number —
+and a lifetime step count is tracked separately and never spent. Prices are
+the real Poké Mart's (stable since Gen 1); Master Ball is never sold, same as
+every game:
 
 | Item | Price |
 |---|---|
@@ -382,50 +469,6 @@ never sold, same as every game:
 | Hyper Potion | $1,200 |
 | Full Heal | $600 |
 | Protein / Iron / Carbos | $9,800 each |
-
-The **BAG** menu row is the field bag, and it only offers the vitamins: the pet has
-no persistent HP or ailment outside a fight, so a potion in the field would have
-nothing to act on. Vitamins respect the same **IV-bound training ceiling**
-(`trMaxFor`) as the punching bag and a gym reward — an item that could push past it
-would make the IV roll decorative.
-
-A caught creature takes a party slot, then a box slot, then asks — the same path a
-farewell already uses. It is **not** added to the Pokédex on capture: registration
-means "you raised this", so it happens when you actually make it the one you raise.
-
-### LAN battles
-
-Pair two boards over ESP-NOW from the gym ladder's **LAN BATTLE** button — one
-hosts, one joins. Bring whichever team you like: unlike the gym ladders there
-is no level or team-size cap, since you already know what your opponent is
-bringing. A running **head-to-head record** is kept against each rival —
-keyed by their device, not their typed name, so renaming doesn't reset the
-score — and shown on the pairing screen the next time you two fight.
-
-### Bonds, streaks, medals, Pokédex
-- **Streak** (player-wide, survives across pets): first care each real day; milestones
-  at **3 / 7 / 30 / 100** days; skipping a day breaks it.
-- **Bond** (per pet, resets on hatch): grows with affection (**cap +20/day**), cools on
-  neglect. Both streak & bond improve egg/shiny odds — **and the IVs of your next pet**.
-- **8 medals** (Lv10/25/50, favorite berry found, 7-day streak, max bond, final form,
-  "fit" = weight 0 & no slip-ups), per-pet + a global counter.
-- **Pokédex:** raising a species registers it; **809 + shinies** to complete.
-  Browsed **one region at a time** — swipe vertically between regions,
-  horizontally to page within it, so nothing is more than ten pages from the front.
-- **Name:** tap the header to open the touch keyboard; the nickname replaces the
-  species name there and on the stat card.
-- **Languages:** the UI ships in 6 — English (default), Spanish, French, German,
-  Italian, Portuguese — switchable from Settings. Move names and battle
-  narration follow whichever is chosen.
-- **Region:** the pill under a waiting egg picks which generation it comes from —
-  **Kanto / Johto / Hoenn / Sinnoh / Unova / Kalos / Alola / All**. A first egg gives that
-  region's starter. A handful of species have no sprite art anywhere (13 of
-  Unova's 156, and Pyroar); they keep their dex numbers but never hatch, since the egg would
-  give a creature that could only ever draw as a number.
-  A region whose **sprite pack is not on the card** shows as locked and is kept
-  out of the egg pool, so a partial sprite install is a supported state. A pack
-  sent from the web installer is picked up **as it lands** — the region unlocks
-  without a reboot.
 
 ### Battle stats & IVs
 Every pet rolls four **IVs** (individual values, 0–31) at hatch — ATK / DEF / SPD /
@@ -460,71 +503,36 @@ ball game (and still 1 h of wellbeing passively). **VIT** can't be trained. All 
 live in the training menu now; the ball moved off the home row when it became
 defence's trainer.
 
-**TMs unlock at level 40**, all at once, and nothing before — so the early game
-runs on level-up moves and cheap early attacks (SCRATCH, PECK, POISON STING,
-BUBBLE, ABSORB, SPARK, FURY ATTACK and the rest), never a borrowed TM.
-
-The first five gym leaders sit at levels **14–43**, so you fight the early
-ladder on what your species actually learns; TMs arrive as you enter the back
-half. A creature retires at 73 and caps at 100.
-
-**Gym wins train too**, which is what makes the ladder worth replaying rather than
-a checklist you tick once:
-
-| | Training a win is worth |
-|---|---|
-| Easy | **3–5** points, **+1 per 3 leaders** deeper into the ladder |
-| Hard | **6–10** points, same ladder bonus |
-| Which stat | **random**, but only among stats **not already at their ceiling** |
-| Who gets it | the **live pet**, and only if it was in the squad |
-
-A random stat that landed on a maxed one would silently evaporate, so it never
-picks one; and the IV-bound ceiling above still applies, so a win can never push a
-stat past what its IV allows. Banked members are frozen at what they were banked
-with, and battling already costs the live pet energy — that, not a cooldown, is
-what rate-limits rematching. A fully trained creature is told so.
-
-### Moves
-
-Each creature knows up to **4 moves**, from a pool of 77. Two kinds:
-
-- **Level-up moves** are gated: Charizard learns FLAMETHROWER at 34, WING ATTACK
-  at 36, DRAGON RAGE at 54. A hatchling starts with **only** what its species
-  knows at level 1 — a Charmander opens with GROWL alone, and the other three
-  slots stay empty. Crossing a gate fills an empty slot silently; with all four
-  full you get a **prompt** asking which to forget (or to skip it). Offers queue,
-  so coming back to a pet that aged two weeks offline asks one at a time.
-  Evolving keeps the moves it already has, and the new form's gates take over —
-  moves it would have learned *below* your current level are not backfilled,
-  same as the real games.
-- **TMs** have no level gate and are chosen on demand, from the **MOVES** page of
-  the stats card (swipe across, then tap a slot). A move that is *also* a TM
-  keeps its level gate — otherwise every gated move would come free, since most
-  of them were sold as TMs at some point. Levels come from FireRed/LeafGreen,
-  the Kanto games that still gate properly.
-
-Moves **freeze when a pet is banked** into the party, alongside its level and
-training: the set you chose while it was alive is what it fights with forever.
-
 **Special attack and defence** come off the species' own `bSpA`/`bSpD` base stats
 (Alakazam is 50 Attack but 135 Special Attack), reusing the physical IV and
 training rather than rolling their own — special attack runs off the ATK IV and
 training, special defence off the DEF IV and training. So the physical/special
 split lives on the species, not the individual — no extra IVs to roll.
 
-### Retiring a creature early
-
-**RETIRE** on the menu ends a creature whenever you like — what it costs
-depends on whether the farewell had already been earned:
-
-| | |
-|---|---|
-| Retiring one that has **earned** its farewell | free — it is simply the farewell reached by another button. It **joins your party** and **blesses** the next egg |
-| Retiring one that has **not** | it is **gone for good** — not banked, not in the box — the next egg is **neutral** instead of blessed, and evolves **1 day later** than it otherwise would |
-
-That evolution delay does not compound: retiring early more than once in a row
-still costs only one extra day. The confirm dialog states the cost before you
-accept it.
+### Bonds, streaks, medals, Pokédex
+- **Streak** (player-wide, survives across pets): first care each real day; milestones
+  at **3 / 7 / 30 / 100** days; skipping a day breaks it.
+- **Bond** (per pet, resets on hatch): grows with affection (**cap +20/day**), cools on
+  neglect. Both streak & bond improve egg/shiny odds — **and the IVs of your next pet**.
+- **8 medals** (Lv10/25/50, favorite berry found, 7-day streak, max bond, final form,
+  "fit" = weight 0 & no slip-ups), per-pet + a global counter.
+- **Pokédex:** raising a species registers it; **809 + shinies** to complete.
+  Browsed **one region at a time** — swipe vertically between regions,
+  horizontally to page within it, so nothing is more than ten pages from the front.
+- **Name:** tap the header to open the touch keyboard; the nickname replaces the
+  species name there and on the stat card.
+- **Languages:** the UI ships in 6 — English (default), Spanish, French, German,
+  Italian, Portuguese — switchable from Settings. Move names and battle
+  narration follow whichever is chosen.
+- **Region:** the pill under a waiting egg picks which generation it comes from —
+  **Kanto / Johto / Hoenn / Sinnoh / Unova / Kalos / Alola / All**. A first egg gives that
+  region's starter. A handful of species have no sprite art anywhere (13 of
+  Unova's 156, and Pyroar); they keep their dex numbers but never hatch, since the egg would
+  give a creature that could only ever draw as a number.
+  A region whose **sprite pack is not on the card** shows as locked and is kept
+  out of the egg pool, so a partial sprite install is a supported state. A pack
+  sent from the web installer is picked up **as it lands** — the region unlocks
+  without a reboot.
 
 ### Choosing your egg's region
 
@@ -537,8 +545,9 @@ region moves the egg you are holding. Two rules stop that being a re-roll button
 | Memory | each region's answer is **remembered** for the current egg, so switching back shows the same creature |
 
 The region is first chosen at the **very start of a new game**, on the screen
-before the starter — so the creature you begin with and the eggs that follow
-come from the same place. Everything below is about changing it afterwards.
+before the starter (see "Starting out: region and starter" above) — so the
+creature you begin with and the eggs that follow come from the same place.
+Everything here is about changing it afterwards.
 
 A region is decided by the **base** species, and evolutions follow wherever they
 lead — a Kanto run still reaches Crobat and Blissey.
