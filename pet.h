@@ -22,6 +22,11 @@
 // as 24, so it stays "a day" if the level rate is ever retuned.
 #define EVO_PENALTY_LEVELS ((uint8_t)((24UL * 60) / MINUTES_PER_LEVEL))
 #define RUNAWAY_TICKS 60                   // se escapa tras 1 h con TODO a cero
+// How long a FAILED checkpoint write waits before the idle-flush path in
+// loop() is allowed to retry it. See Pet::retryDue()'s comment -- without
+// this, a failing NVS write retried on every single loop iteration while the
+// screen was dimmed or the pet was asleep.
+#define SAVE_RETRY_COOLDOWN_MS 5000UL
 // Night, by the RTC: midnight to 06:00. Auto-sleep needs BOTH: the screen off
 // AND this window.
 // The screen alone would pause the game every time you put the device in a
@@ -221,7 +226,20 @@ public:
   // It does NOT bank whatever is currently live -- the caller owns that, since
   // only it knows whether there is a slot free. Calling this without storing
   // the previous pet first destroys it.
-  void switchTo(const PartyMon &m);
+  //
+  // Returns whether the resulting save actually landed. This pet's fields are
+  // updated in RAM regardless -- the screen shows the new creature either way,
+  // which is correct: it does not roll back on a failed write, the same as
+  // every other save() caller. What the return value is FOR is the caller's
+  // OTHER half of the handover. focusSwap() found this the hard way: it used
+  // to bank the outgoing pet into the party slot unconditionally and call this
+  // second, so a failed checkpoint write here left the party blob already
+  // showing the outgoing pet banked while the on-disk checkpoint still ALSO
+  // showed that same pet as live (this call's write never landed) -- the same
+  // creature in two places the instant a reboot reloaded the stale checkpoint.
+  // A caller with a second write to make on the strength of this one succeeding
+  // must check the return value before making it.
+  bool switchTo(const PartyMon &m);
 
   // The player's own name, alongside the badges and the streak: it belongs to
   // whoever is playing, not to the creature, so newEgg() must never clear it.
@@ -366,7 +384,17 @@ public:
   void declineFarewell() { farDeclinedAge = ageMinutes + 1440; } // re-ofrece dentro de 1 dia
   // primera partida: el jugador elige inicial (Bulbasaur/Charmander/Squirtle)
   bool awaitingStarter() const { return starterPick; }
-  void chooseStarter(int16_t dex) { eggTarget = dex; starterPick = false; save(); }
+  void chooseStarter(int16_t dex) {
+    eggTarget = dex;
+    starterPick = false;
+    // One-time default so trainerName is never "" going forward: renameTrainer()
+    // can still change it later, and this only fires if nothing set it already.
+    if (!trainerName[0]) {
+      strncpy(trainerName, "TRAINER", sizeof(trainerName) - 1);
+      trainerName[sizeof(trainerName) - 1] = 0;
+    }
+    save();
+  }
   // Empties NVS; the caller restarts into a new game (serial command WIPE).
   // BOTH generation counters go back to zero with it, or the next save would
   // write a record numbered above the empty slots and the parity invariant in
@@ -469,6 +497,20 @@ public:
     saveNow();
   }
   bool savePending() const { return pendingSave; }
+  // Whether ENOUGH time has passed since the last save ATTEMPT (success or
+  // failure) to try again. A failed checkpoint write leaves pendingSave true
+  // forever -- only a SUCCESS clears it -- and the idle-flush path in the
+  // sketch's loop() checks savePending() on every single iteration while the
+  // screen is dimmed or the pet is asleep. Without this, one failing NVS
+  // write turned into hundreds of retries per second for as long as the
+  // condition that broke it lasted: every one doing a real flash write (and
+  // on this chip that stalls both cores for about a second while dimmed,
+  // which is supposed to be invisible), every one printing its own log line,
+  // and every one hammering a namespace that may already be the problem.
+  // Found from a real capture: ~250 "save: pet checkpoint failed" lines in
+  // under 200ms. This does not fix WHY a write failed -- only how often the
+  // firmware is allowed to keep re-trying while it does.
+  bool retryDue() const { return millis() - lastSaveAttempt >= SAVE_RETRY_COOLDOWN_MS; }
   // Is persistence actually WORKING? False means the creature on the panel is
   // not being written anywhere -- NVS would not open, or it is refusing writes
   // because it is full or failing. The firmware used to be unable to tell: the
@@ -504,6 +546,7 @@ private:
   // to be its OWN last plus one for the parity invariant in ckptSlot() to hold.
   uint32_t saveGeneration = 0;
   uint32_t playerGeneration = 0;
+  uint32_t lastSaveAttempt = 0;  // millis() of the last save() call, success or fail
   uint32_t lastTick = 0;
   uint32_t eatUntil = 0;
   uint32_t heartUntil = 0;
@@ -543,7 +586,10 @@ private:
   bool loadCoreSnapshot();
   bool savePlayerSnapshot();
   bool loadPlayerSnapshot();
-  void save();
+  // Returns whether BOTH checkpoints landed. switchTo() propagates this so a
+  // caller that is banking the outgoing pet at the same time (focusSwap()) can
+  // tell whether it is safe to commit that half too -- see its own comment.
+  bool save();
   void load();
   static uint8_t clamp100(int v) { return v < 0 ? 0 : (v > 100 ? 100 : v); }
 };

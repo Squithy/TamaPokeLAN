@@ -4,6 +4,7 @@
 #include "moves.h"
 #include "noart.h"   // speciesHasArt(): the egg pool skips what cannot be drawn
 #include "audio.h"
+#include "nvsinfo.h"  // headroom numbers on a checkpoint failure -- see saveCoreSnapshot()
 #include <stddef.h>
 
 // Reads a blob that may be LONGER than the array we are reading it into.
@@ -334,6 +335,32 @@ struct CkptCursor {
   }
 };
 
+// Prints WHICH of the two checkpoint failure modes actually happened, plus
+// the NVS headroom at that moment -- "save: pet checkpoint failed" alone
+// never said whether putBytes() itself was refused (NVS full/failing) or the
+// write went through but read back wrong (a torn or marginal cell), and
+// those point at completely different problems. Shared by both checkpoints
+// so there is one format to read in the log, not two.
+static void logCkptFailure(const char *who, const char *stage, const char *key) {
+  uint32_t used = 0, avail = 0, total = 0;
+  bool haveStats = nvsEntryStats(&used, &avail, &total);
+  // nvsProbeWrite() does a raw, independent nvs_set_u8()+commit() on a
+  // DIFFERENT key, so it only proves the namespace is alive. nvsProbeKey()
+  // erases the ACTUAL checkpoint key (petA/petB or plyA/plyB) this call was
+  // trying to write -- see nvsinfo.h for what each of its return values
+  // means. Together these tell "the namespace is dead" apart from "this one
+  // key is wedged", which used/avail/total alone never could.
+  const char *probe = nvsProbeWrite();
+  const char *erase = nvsProbeKey(key);
+  if (haveStats) {
+    Serial.printf("save: %s checkpoint failed (%s) -- nvs used=%u avail=%u total=%u probe=%s erase=%s\n",
+                  who, stage, used, avail, total, probe, erase);
+  } else {
+    Serial.printf("save: %s checkpoint failed (%s) -- nvs stats unavailable probe=%s erase=%s\n",
+                  who, stage, probe, erase);
+  }
+}
+
 bool Pet::savePlayerSnapshot() {
   const uint32_t nextGen = playerGeneration + 1;
   uint8_t buf[PLAYER_CAP] = {};
@@ -370,10 +397,29 @@ bool Pet::savePlayerSnapshot() {
 
   uint16_t total = ckptSeal(buf, cur.at, PLAYER_MAGIC, PLAYER_VERSION, nextGen);
   const char *key = ckptSlot(nextGen, "plyA", "plyB");
-  if (prefs.putBytes(key, buf, total) != total) return false;
+  bool wrote = (prefs.putBytes(key, buf, total) == total);
+  if (!wrote) {
+    logCkptFailure("player", "write", key);
+    // Same clean stale-handle test as saveCoreSnapshot() -- see its comment.
+    Serial.println("save: player -- closing prefs to test a stale handle");
+    prefs.end();
+    bool reopened = prefs.begin("tamapoke", false);
+    Serial.printf("save: player -- reopen %s\n", reopened ? "ok" : "FAILED");
+    if (reopened) {
+      size_t n = prefs.putBytes(key, buf, total);
+      Serial.printf("save: player -- retry on fresh handle wrote=%u of %u\n",
+                    (unsigned)n, (unsigned)total);
+      wrote = (n == total);
+    }
+    if (!wrote) return false;
+    Serial.println("save: player -- retry after reopen SUCCEEDED (stale handle confirmed)");
+  }
   // Read back into the same buffer and re-check, exactly as the creature's does.
   uint16_t n = ckptRead(prefs, key, PLAYER_MAGIC, buf, sizeof(buf));
-  if (n != total || ckptRd32(buf + 8) != nextGen) return false;
+  if (n != total || ckptRd32(buf + 8) != nextGen) {
+    logCkptFailure("player", "verify", key);
+    return false;
+  }
   playerGeneration = nextGen;
   return true;
 }
@@ -458,10 +504,24 @@ void Pet::begin() {
   memset(dexShinyReg, 0, sizeof(dexShinyReg));
   for (int i = 0; i < REGION_COUNT; i++) eggByRegion[i] = 0;
   if (!prefs.getBool("init", false)) {
-    prefs.putBool("init", true);
+    if (!prefs.putBool("init", true)) logKeyFailure("pet", "init");
     newEgg();
   } else {
     load();
+    // Backfill for saves from before chooseStarter() started defaulting this:
+    // starter selection is already behind any save that reaches here (it is
+    // not the first-boot "awaiting a starter" path above), so an empty name
+    // here means "never renamed", not "hasn't chosen yet" -- same one-time
+    // default chooseStarter() sets for a new game. Writes just the one key
+    // directly rather than calling save(): a full save also (re)writes the
+    // checkpoint, which begin() has never done as a side effect of loading,
+    // and upgrade_test's downgrade case depends on that staying true -- it
+    // deliberately loads a save with legacy keys but no checkpoint yet.
+    if (!starterPick && !trainerName[0]) {
+      strncpy(trainerName, "TRAINER", sizeof(trainerName) - 1);
+      trainerName[sizeof(trainerName) - 1] = 0;
+      if (prefs.putString("tnam", trainerName) == 0) logKeyFailure("pet", "tnam");
+    }
   }
   lastTick = millis();
 }
@@ -728,8 +788,8 @@ PartyMon Pet::toPartyMon() const {
 // Make a stored creature the focused one. reviveFrom()'s twin, and the two are
 // deliberately different: that one hands back a frozen companion, this one
 // hands back a creature that carries on living.
-void Pet::switchTo(const PartyMon &m) {
-  if (m.empty()) return;
+bool Pet::switchTo(const PartyMon &m) {
+  if (m.empty()) return false;
   ceremony = CER_NONE;
   neglectTicks = 0;
   speciesId = m.dex;
@@ -778,7 +838,7 @@ void Pet::switchTo(const PartyMon &m) {
   strncpy(nick, m.nick, sizeof(nick) - 1);
   nick[sizeof(nick) - 1] = 0;
   registerSpecies(speciesId);
-  save();
+  return save();
 }
 
 void Pet::snapshotForParty() {
@@ -1810,14 +1870,36 @@ bool Pet::saveCoreSnapshot() {
 
   uint16_t total = ckptSeal(buf, PET_BODY, PET_CORE_MAGIC, PET_CORE_VERSION, nextGen);
   const char *key = ckptSlot(nextGen, "petA", "petB");
-  if (prefs.putBytes(key, buf, total) != total) return false;
+  bool wrote = (prefs.putBytes(key, buf, total) == total);
+  if (!wrote) {
+    logCkptFailure("pet", "write", key);
+    // Clean test for a STALE HANDLE specifically: close and reopen the REAL
+    // `prefs` object Pet already uses everywhere else, then retry the SAME
+    // write on it -- no second handle touching this key (a raw probe with
+    // its own nvs_open() could not tell "the real write would have worked"
+    // from "my own probe's write is what actually landed").
+    Serial.println("save: pet -- closing prefs to test a stale handle");
+    prefs.end();
+    bool reopened = prefs.begin("tamapoke", false);
+    Serial.printf("save: pet -- reopen %s\n", reopened ? "ok" : "FAILED");
+    if (reopened) {
+      size_t n = prefs.putBytes(key, buf, total);
+      Serial.printf("save: pet -- retry on fresh handle wrote=%u of %u\n",
+                    (unsigned)n, (unsigned)total);
+      wrote = (n == total);
+    }
+    if (!wrote) return false;
+    Serial.println("save: pet -- retry after reopen SUCCEEDED (stale handle confirmed)");
+  }
   // Read it back and re-check the CRC before believing it. This catches a
   // rejected or short write, which is what a full or failing NVS looks like
   // from up here -- it cannot catch a marginal cell that reads correctly now
   // and decays later, which is what the second slot is for.
   PetCoreSnapshot written;
-  if (!readPetCore(prefs, key, written) || written.generation != nextGen)
+  if (!readPetCore(prefs, key, written) || written.generation != nextGen) {
+    logCkptFailure("pet", "verify", key);
     return false;
+  }
   saveGeneration = nextGen;
   return true;
 }
@@ -1877,81 +1959,106 @@ bool Pet::loadCoreSnapshot() {
   return true;
 }
 
-void Pet::save() {
-  if (!opened) return;
+bool Pet::save() {
+  if (!opened) return false;
+  lastSaveAttempt = millis();   // retryDue() measures from this, on every attempt
   // Both checkpoints go first, and a failure in either one returns BEFORE the
   // legacy keys are touched. That ordering is the point: the legacy keys are
   // still what a backup exports and what a downgrade reads, so a half-finished
   // run through them is a real save that nothing can see is broken. Leaving
   // them entirely alone means the previous save stays the previous save.
+  // Each of these already logged which stage failed and the NVS headroom at
+  // that moment -- see logCkptFailure() -- so nothing more is printed here.
   if (!saveCoreSnapshot()) {
     pendingSave = true;
     if (saveFailures < 255) saveFailures++;
-    Serial.println("save: pet checkpoint failed");
-    return;
+    return false;
   }
   if (!savePlayerSnapshot()) {
     pendingSave = true;
     if (saveFailures < 255) saveFailures++;
-    Serial.println("save: player checkpoint failed");
-    return;
+    return false;
   }
   ticksSinceSave = 0;
   pendingSave = false;
   saveFailures = 0;
-  prefs.putUChar("full", fullness);
-  prefs.putUChar("joy", joy);
-  prefs.putUChar("ene", energy);
-  prefs.putUChar("hyg", hygiene);
-  prefs.putUChar("poop", poops);
-  prefs.putUChar("wgt", weight);
-  prefs.putUChar("ivat", ivAtk);
-  prefs.putUChar("ivdf", ivDef);
-  prefs.putUChar("ivsp", ivSpe);
-  prefs.putUChar("ivhp", ivHp);
-  prefs.putUChar("tatk", trAtk);
-  prefs.putUChar("tdef", trDef);
-  prefs.putUChar("tspe", trSpe);
-  prefs.putBytes("mvs", moves, sizeof(moves));
-  prefs.putUChar("mvlv", lastLearnLevel);
-  prefs.putUChar("avtr", avatar);
-  prefs.putUChar("reg", region);
-  prefs.putUChar("regn", REGION_COUNT);   // what REGION_ALL meant when this was written
-  prefs.putBytes("badgX", badgesX, sizeof(badgesX));
-  prefs.putBytes("badhX", badgesHardX, sizeof(badgesHardX));
-  prefs.putBytes("eggR", eggByRegion, sizeof(eggByRegion));
-  prefs.putString("tnam", trainerName);
-  prefs.putBool("froz", frozen);
-  prefs.putUShort("badg", badges);
-  prefs.putUShort("badh", badgesHard);
-  prefs.putBool("bk", berryKnown);
-  prefs.putBool("shy", shiny);
-  prefs.putBool("eshy", eggShiny);
-  prefs.putBool("stpk", starterPick);
-  prefs.putUChar("evop", evoPen);
-  prefs.putUChar("slpa", sleepAuto);
-  prefs.putBool("rtpn", retirePending);
-  prefs.putBytes("dexsh", dexShinyReg, sizeof(dexShinyReg));
-  prefs.putUInt("age", ageMinutes);
-  prefs.putShort("dexn", speciesId);
-  prefs.putShort("eggT2", eggTarget);
-  prefs.putUChar("crack", eggTaps);
-  prefs.putUChar("mist", careMistakes);
-  prefs.putBool("sleep", sleeping);
-  prefs.putUChar("lend", lastEnd);
-  if (lastSeenEpoch) prefs.putUInt("seen", lastSeenEpoch);
-  prefs.putBytes("dexreg", dexReg, sizeof(dexReg));
-  prefs.putUShort("strk", streak);
-  prefs.putUShort("bstrk", bestStreak);
-  prefs.putUInt("cday", lastCareDay);
-  prefs.putUChar("bond", bond);
-  prefs.putUShort("medal", medals);
-  prefs.putUShort("tmedal", totalMedals);
-  prefs.putUShort("mstone", lastMilestone);
-  prefs.putUShort("ghi", gameHi);
-  prefs.putUShort("shi", strHi);
-  prefs.putUShort("qhi", spdHi);
-  prefs.putString("nick", nick);
+  // Every one of these used to be fire-and-forget: putX() returning 0/short
+  // was silently discarded (see nvsinfo.cpp's header comment). SAVE_KEY logs
+  // exactly which key failed, with the same headroom+probe detail the
+  // checkpoints already had, instead of leaving the legacy keys as the one
+  // blind spot in the save path. The checkpoints above still gate whether we
+  // even get here; this is diagnostics for what happens after that gate.
+#define SAVE_KEY(expr, key) do { if (!(expr)) logKeyFailure("pet", key); } while (0)
+  // putString() returns strlen(value) on success (Preferences.cpp), so a
+  // successful write of an empty string returns 0 -- indistinguishable from
+  // putString()'s own 0-on-real-failure. nick and tnam are the two keys that
+  // can legitimately be empty (an unnicknamed pet; trainerName before the
+  // starter-pick/backfill default above ever ran), so SAVE_KEY's plain
+  // truthiness check misreads a correct empty-string save as a failure. Only
+  // treat a 0 return as a real failure when the value being written is
+  // itself non-empty. (A close/reopen/retry diagnostic ran here earlier this
+  // session chasing a suspected stale handle; the retry never once changed
+  // the outcome, which is what pointed at this being a false positive rather
+  // than a real write failure.)
+#define SAVE_STR_KEY(expr, key, value) do { \
+    if ((expr) == 0 && (value)[0] != '\0') logKeyFailure("pet", key); \
+  } while (0)
+  SAVE_KEY(prefs.putUChar("full", fullness), "full");
+  SAVE_KEY(prefs.putUChar("joy", joy), "joy");
+  SAVE_KEY(prefs.putUChar("ene", energy), "ene");
+  SAVE_KEY(prefs.putUChar("hyg", hygiene), "hyg");
+  SAVE_KEY(prefs.putUChar("poop", poops), "poop");
+  SAVE_KEY(prefs.putUChar("wgt", weight), "wgt");
+  SAVE_KEY(prefs.putUChar("ivat", ivAtk), "ivat");
+  SAVE_KEY(prefs.putUChar("ivdf", ivDef), "ivdf");
+  SAVE_KEY(prefs.putUChar("ivsp", ivSpe), "ivsp");
+  SAVE_KEY(prefs.putUChar("ivhp", ivHp), "ivhp");
+  SAVE_KEY(prefs.putUChar("tatk", trAtk), "tatk");
+  SAVE_KEY(prefs.putUChar("tdef", trDef), "tdef");
+  SAVE_KEY(prefs.putUChar("tspe", trSpe), "tspe");
+  SAVE_KEY(prefs.putBytes("mvs", moves, sizeof(moves)), "mvs");
+  SAVE_KEY(prefs.putUChar("mvlv", lastLearnLevel), "mvlv");
+  SAVE_KEY(prefs.putUChar("avtr", avatar), "avtr");
+  SAVE_KEY(prefs.putUChar("reg", region), "reg");
+  SAVE_KEY(prefs.putUChar("regn", REGION_COUNT), "regn");   // what REGION_ALL meant when this was written
+  SAVE_KEY(prefs.putBytes("badgX", badgesX, sizeof(badgesX)), "badgX");
+  SAVE_KEY(prefs.putBytes("badhX", badgesHardX, sizeof(badgesHardX)), "badhX");
+  SAVE_KEY(prefs.putBytes("eggR", eggByRegion, sizeof(eggByRegion)), "eggR");
+  SAVE_STR_KEY(prefs.putString("tnam", trainerName), "tnam", trainerName);
+  SAVE_KEY(prefs.putBool("froz", frozen), "froz");
+  SAVE_KEY(prefs.putUShort("badg", badges), "badg");
+  SAVE_KEY(prefs.putUShort("badh", badgesHard), "badh");
+  SAVE_KEY(prefs.putBool("bk", berryKnown), "bk");
+  SAVE_KEY(prefs.putBool("shy", shiny), "shy");
+  SAVE_KEY(prefs.putBool("eshy", eggShiny), "eshy");
+  SAVE_KEY(prefs.putBool("stpk", starterPick), "stpk");
+  SAVE_KEY(prefs.putUChar("evop", evoPen), "evop");
+  SAVE_KEY(prefs.putUChar("slpa", sleepAuto), "slpa");
+  SAVE_KEY(prefs.putBool("rtpn", retirePending), "rtpn");
+  SAVE_KEY(prefs.putBytes("dexsh", dexShinyReg, sizeof(dexShinyReg)), "dexsh");
+  SAVE_KEY(prefs.putUInt("age", ageMinutes), "age");
+  SAVE_KEY(prefs.putShort("dexn", speciesId), "dexn");
+  SAVE_KEY(prefs.putShort("eggT2", eggTarget), "eggT2");
+  SAVE_KEY(prefs.putUChar("crack", eggTaps), "crack");
+  SAVE_KEY(prefs.putUChar("mist", careMistakes), "mist");
+  SAVE_KEY(prefs.putBool("sleep", sleeping), "sleep");
+  SAVE_KEY(prefs.putUChar("lend", lastEnd), "lend");
+  if (lastSeenEpoch) SAVE_KEY(prefs.putUInt("seen", lastSeenEpoch), "seen");
+  SAVE_KEY(prefs.putBytes("dexreg", dexReg, sizeof(dexReg)), "dexreg");
+  SAVE_KEY(prefs.putUShort("strk", streak), "strk");
+  SAVE_KEY(prefs.putUShort("bstrk", bestStreak), "bstrk");
+  SAVE_KEY(prefs.putUInt("cday", lastCareDay), "cday");
+  SAVE_KEY(prefs.putUChar("bond", bond), "bond");
+  SAVE_KEY(prefs.putUShort("medal", medals), "medal");
+  SAVE_KEY(prefs.putUShort("tmedal", totalMedals), "tmedal");
+  SAVE_KEY(prefs.putUShort("mstone", lastMilestone), "mstone");
+  SAVE_KEY(prefs.putUShort("ghi", gameHi), "ghi");
+  SAVE_KEY(prefs.putUShort("shi", strHi), "shi");
+  SAVE_KEY(prefs.putUShort("qhi", spdHi), "qhi");
+  SAVE_STR_KEY(prefs.putString("nick", nick), "nick", nick);
+#undef SAVE_KEY
+#undef SAVE_STR_KEY
+  return true;
 }
 
 void Pet::load() {

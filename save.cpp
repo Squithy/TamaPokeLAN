@@ -3,6 +3,7 @@
 #include <Preferences.h>
 #include <string.h>
 #include "party.h"   // MAX_VAL is derived from the box, see below
+#include "nvsinfo.h" // logKeyFailure(): writeField() (the IMPORT path) used to be silent too
 
 // Every key the firmware persists. Adding one here is the whole job of adding
 // it to the backup; save_test fails if a key exists in NVS and not in this list.
@@ -36,8 +37,12 @@ const SaveField SAVE_FIELDS[] = {
   { "strk", SK_U16 },   { "bstrk", SK_U16 },  { "cday", SK_U32 },
   { "medal", SK_U16 },  { "tmedal", SK_U16 }, { "mstone", SK_U16 },
   { "ghi", SK_U16 },    { "shi", SK_U16 },    { "qhi", SK_U16 },
+  // the Poke Mart: 1 pedometer step = $1
+  { "wlt", SK_U32 },    { "stps", SK_U32 },
   // the banked creatures, and what you are carrying
   { "party", SK_BYTES }, { "box", SK_BYTES }, { "bag", SK_BYTES },
+  // remembered LAN opponents -- its own key, same reasoning as the box
+  { "rivals", SK_BYTES },
   // settings, so a restored device plays the way it did
   { "lang", SK_U8 },    { "snd", SK_BOOL },   { "vol", SK_U8 },
 };
@@ -97,22 +102,48 @@ static int readField(Preferences &p, const SaveField &f, uint8_t *val) {
   return -1;
 }
 
+// Was entirely fire-and-forget before -- a failed write during IMPORT used to
+// leave that one field silently holding whatever was there before the restore
+// (or NVS's own default), with the rest of the blob looking like it landed.
 static void writeField(Preferences &p, const SaveField &f,
                        const uint8_t *val, uint16_t n) {
   switch (f.kind) {
-    case SK_U8:   if (n == 1) p.putUChar(f.key, val[0]); break;
-    case SK_I8:   if (n == 1) p.putChar(f.key, (int8_t)val[0]); break;
-    case SK_BOOL: if (n == 1) p.putBool(f.key, val[0] != 0); break;
-    case SK_U16:  if (n == 2) { uint16_t v; memcpy(&v, val, 2); p.putUShort(f.key, v); } break;
-    case SK_I16:  if (n == 2) { int16_t v; memcpy(&v, val, 2); p.putShort(f.key, v); } break;
-    case SK_U32:  if (n == 4) { uint32_t v; memcpy(&v, val, 4); p.putUInt(f.key, v); } break;
-    case SK_BYTES: if (n) p.putBytes(f.key, val, n); break;
+    case SK_U8:
+      if (n == 1 && !p.putUChar(f.key, val[0])) logKeyFailure("import", f.key);
+      break;
+    case SK_I8:
+      if (n == 1 && !p.putChar(f.key, (int8_t)val[0])) logKeyFailure("import", f.key);
+      break;
+    case SK_BOOL:
+      if (n == 1 && !p.putBool(f.key, val[0] != 0)) logKeyFailure("import", f.key);
+      break;
+    case SK_U16:
+      if (n == 2) {
+        uint16_t v; memcpy(&v, val, 2);
+        if (!p.putUShort(f.key, v)) logKeyFailure("import", f.key);
+      }
+      break;
+    case SK_I16:
+      if (n == 2) {
+        int16_t v; memcpy(&v, val, 2);
+        if (!p.putShort(f.key, v)) logKeyFailure("import", f.key);
+      }
+      break;
+    case SK_U32:
+      if (n == 4) {
+        uint32_t v; memcpy(&v, val, 4);
+        if (!p.putUInt(f.key, v)) logKeyFailure("import", f.key);
+      }
+      break;
+    case SK_BYTES:
+      if (n && p.putBytes(f.key, val, n) != n) logKeyFailure("import", f.key);
+      break;
     case SK_STR: {
       char tmp[64] = {0};
       if (n >= sizeof(tmp)) return;
       memcpy(tmp, val, n);
       tmp[n] = 0;
-      p.putString(f.key, tmp);
+      if (!p.putString(f.key, tmp)) logKeyFailure("import", f.key);
       break;
     }
   }

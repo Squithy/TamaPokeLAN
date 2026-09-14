@@ -1,5 +1,6 @@
 #include "inventory.h"
 #include <string.h>
+#include "nvsinfo.h"   // logKeyFailure(): save() used to be silent on failure
 
 Inventory bag;
 
@@ -37,7 +38,8 @@ void Inventory::begin() {
 }
 
 void Inventory::save() {
-  prefs.putBytes("bag", counts, sizeof(counts));
+  if (prefs.putBytes("bag", counts, sizeof(counts)) != sizeof(counts))
+    logKeyFailure("bag", "bag");
 }
 
 void Inventory::clear() {

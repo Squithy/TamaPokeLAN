@@ -10,6 +10,15 @@ restart. Read this with `CLAUDE.md`, which is the permanent knowledge and is
 > landed, the dex went past Unova to 1025, and the three "failing tests" were
 > fixed a dozen releases ago. § 5's pitfalls are the part that has stayed true.
 > Do not read anything outside § 1 as a description of the repo today.
+>
+> **§ 1a is a day newer than § 1** (2026-09-10) and takes priority over it for
+> anything about LAN, the save/checkpoint path, or hardware state — the first
+> real two-board session happened in between and changed several of § 1's
+> "not verified on hardware" answers to "verified, and broken, and now fixed."
+>
+> **§ 1b is later the same day** (2026-09-10) and closes the "why a checkpoint
+> write fails at all" question § 1a left open — plus two more save-path bugs
+> found chasing it.
 
 ---
 
@@ -84,6 +93,117 @@ with `check_release.py` enforcing it.
 Restore = paste the whole block into the serial console at 115200, **including
 the bare `IMPORT` line at the end**, which is the commit. Without it nothing is
 written.
+
+---
+
+## 1a. First real two-board LAN session (2026-09-10) — three bugs, all fixed
+
+Four boards, real hardware, first time `linknow.cpp` had ever executed. Full
+detail is in `CLAUDE.md`'s TODO section ("Found on real two-board LAN testing,
+real hardware, four boards"); this is the short version for picking work back
+up.
+
+**`FW_VERSION` is 3.23** (bumped for these three fixes; `README.md`'s badge
+matches). The board on COM5 is flashed with it. **This is a local dev bump
+only** — not merged, not tagged, not released, and `web/manifest.json` is
+deliberately left at 3.22 rather than hand-edited, since the right way to move
+it is `build_web.sh` (which also recomputes the JS cache-buster hashes), and
+that is a bigger step than this session did.
+
+**Found and fixed, flashed to hardware, not yet re-soaked:**
+
+1. `focusSwap()` could put the same creature in both a party slot and the
+   live pet's own checkpoint at once, if the checkpoint write failed partway
+   through the swap. `Pet::save()`/`Pet::switchTo()` now return `bool`;
+   `focusSwap()` only commits the party-side write if the checkpoint one
+   landed. Regression test in `focus_test.cpp` using the emulator's
+   `nvsFailWritesAfter()` fault injection.
+2. A failing checkpoint write used to retry on every loop iteration while the
+   screen was dimmed — ~250 `save: pet checkpoint failed` lines captured in
+   under 200ms on one board. Now throttled to one retry every 5s
+   (`Pet::retryDue()`), and the failure message says which stage failed
+   (write vs. read-back verify) plus live NVS headroom, instead of one
+   undifferentiated line.
+3. Dismissing a mid-battle "rival left" message (guest quit) crashed the host
+   with a TASK WATCHDOG timeout on the battle screen. Cause: `lanLeave()` —
+   which shuts the ESP-NOW radio off and resets `lan.state` — was called from
+   `btlRun()`'s exit but not from either of `battleTap()`'s two dismiss paths,
+   so the radio was left running, uninitialised-but-not-torn-down, into a LAN
+   screen that expected `LINK_OFF`. Both paths now call it. **Not yet
+   re-confirmed against the original repro** (guest quits mid-fight, host
+   dismisses) — do that before trusting it closed.
+
+**Still genuinely open:**
+
+- *Why* a checkpoint write fails at all. Captured with healthy NVS headroom
+  (`used=202 avail=302 total=630`), so it is not a full partition. Worth
+  re-watching now that #3 is fixed — a radio left running all session could
+  plausibly have been destabilising something adjacent.
+- One board's save got scrambled during live debugging BEFORE these fixes
+  (a `WIPE` that did not fully clear NVS — `factoryReset()` never checks
+  `prefs.clear()`'s return — followed by an `IMPORT` restore that also never
+  got fully verified). It currently shows a Charmander/Abra/Squirtle party
+  that matches neither the original save nor a fresh one. Emergency `EXPORT`
+  captures from before any of that are in `backups/`, dated 2026-09-10, if
+  it's worth trying to reconstruct. Two more real firmware bugs were found
+  along the way and are NOT yet fixed: `factoryReset()` ignores whether
+  `prefs.clear()` actually succeeded, and `IMPORT`'s serial handler is
+  missing the `saveInhibited = true` guard that `WIPE`'s has before its own
+  `ESP.restart()`.
+
+**New tool:** `tools/debugger/` — a tkinter serial console + save editor,
+built mid-session because the ad-hoc reconnect-per-command approach used
+before it was itself causing `USB_UART_CHIP_RESET`. Decodes a live `EXPORT`
+into an editable view (live pet, party, box, bag, rivals, both checkpoint
+pairs), flags duplicate creatures and unconsumed checkpoint handovers
+automatically, and has a one-click bug-report bundle. Everything above was
+found using it.
+
+---
+
+## 1b. Why the checkpoint failed, and two false alarms (2026-09-10) — FLASHED, `FW_VERSION` 3.24
+
+Answers § 1a's open question: **a stale `Pet::prefs` handle**, not NVS space
+(headroom was healthy every time it was captured) and not corruption. After a
+long session's worth of WIPE/IMPORT/save cycles the handle degraded; closing
+and reopening it and retrying the identical write succeeded immediately, and
+the fix — close/reopen/retry once inside `saveCoreSnapshot()` and
+`savePlayerSnapshot()` on a write failure — has not recurred since. This is
+what was silently blocking `focusSwap()`'s party swap ("RAISE THIS ONE" doing
+nothing after a wild catch): the checkpoint write failed, `switchTo()` failed
+with it, and nothing on screen said why.
+
+**Two false alarms found chasing it, both in the newly-added per-key save
+logging itself, not in the save path:**
+
+1. `nick`/`tnam` (`Pet::save()`'s legacy-key block) logged a failure on
+   *every* save, forever, even on a handle just proven healthy by the
+   checkpoint fix above. Root cause: `Preferences::putString()` returns
+   `strlen(value)` on success — **0** for an empty string, indistinguishable
+   from its own 0-on-failure return. Both keys were legitimately empty
+   (`nick` by design — empty means "show the species name" — and `tnam`
+   because this save had never had a trainer name set), so every "failure"
+   was really a correct empty-string write being misread. Fixed:
+   `SAVE_STR_KEY` only logs when the write returned 0 **and** the value being
+   written was non-empty.
+2. A one-time default closes the `tnam` gap for good rather than just quieting
+   the log: `Pet::chooseStarter()` now sets `trainerName` to `"TRAINER"` if it
+   is still empty when a new game's starter is chosen, and `Pet::begin()`
+   backfills the same default on load for any existing save that is past
+   starter selection and still has an empty name (this device included).
+   `renameTrainer()` still overrides it whenever the player actually sets one.
+
+**Found but NOT fixed — real, but not what was observed this session:**
+`link.cpp`'s `HELLO` exchange reuses a single `peerName` field for both your
+own outgoing name and the peer's received name. Tracing it shows a genuine
+corruption path (a side that receives a `HELLO` while still `LISTENING`, or
+any `LINK_SQUADS`-state resend, echoes the *peer's* name back to them instead
+of sending its own), but `TamaPoke.ino`'s `lanOffer()` has both host and guest
+call `start()` immediately, so in practice — confirmed by repeated real
+testing — squad exchange finishes before the resend timer ever fires and the
+corruption path is never hit. It would only show up under packet loss during
+pairing (what `lossy_test` exists to simulate). Worth fixing before it is,
+not because it has been.
 
 ---
 

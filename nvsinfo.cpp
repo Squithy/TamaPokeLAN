@@ -62,3 +62,63 @@ void nvsReport(const char *when) {
     Serial.printf("nvs %s: LOW -- a full partition is erased WHOLE on the next "
                   "boot; EXPORT now\n", when);
 }
+
+// Raw, bypasses Preferences entirely. Opens the SAME namespace independently
+// (nvs_open does not conflict with an already-open Preferences handle on the
+// same namespace -- NVS handles are reference-counted, not exclusive), writes
+// one throwaway byte, commits, and reports exactly which call broke. This is
+// the only way to see the real error: Preferences::putBytes()/putUChar()/etc.
+// all collapse every failure mode down to "returned 0".
+const char *nvsProbeWrite() {
+  nvs_handle_t h;
+  esp_err_t err = nvs_open("tamapoke", NVS_READWRITE, &h);
+  if (err != ESP_OK) return esp_err_to_name(err);
+  err = nvs_set_u8(h, "nvsprobe", 1);
+  if (err != ESP_OK) { nvs_close(h); return esp_err_to_name(err); }
+  err = nvs_commit(h);
+  nvs_close(h);
+  return esp_err_to_name(err);
+}
+
+// erase_key on the EXACT key, not a stand-in -- see nvsinfo.h for why the
+// generic nvsProbeWrite() above cannot tell a wedged KEY from a healthy
+// namespace, and what each possible return here actually means.
+const char *nvsProbeKey(const char *key) {
+  nvs_handle_t h;
+  esp_err_t err = nvs_open("tamapoke", NVS_READWRITE, &h);
+  if (err != ESP_OK) return esp_err_to_name(err);
+  err = nvs_erase_key(h, key);
+  if (err != ESP_OK) { nvs_close(h); return esp_err_to_name(err); }
+  err = nvs_commit(h);
+  nvs_close(h);
+  return esp_err_to_name(err);
+}
+
+// The direct one: retries the EXACT write with the EXACT data, raw, so the
+// esp_err_t that comes back is the real reason -- not inferred from a probe
+// on a different key or an erase that only proves the slot was reachable.
+const char *nvsProbeBlobWrite(const char *key, const void *data, size_t len) {
+  nvs_handle_t h;
+  esp_err_t err = nvs_open("tamapoke", NVS_READWRITE, &h);
+  if (err != ESP_OK) return esp_err_to_name(err);
+  err = nvs_set_blob(h, key, data, len);
+  if (err != ESP_OK) { nvs_close(h); return esp_err_to_name(err); }
+  err = nvs_commit(h);
+  nvs_close(h);
+  return esp_err_to_name(err);
+}
+
+void logKeyFailure(const char *context, const char *key) {
+  uint32_t used = 0, avail = 0, total = 0;
+  bool haveStats = nvsEntryStats(&used, &avail, &total);
+  const char *probe = nvsProbeWrite();
+  const char *erase = nvsProbeKey(key);
+  if (haveStats) {
+    Serial.printf("save: %s key '%s' failed -- nvs used=%lu avail=%lu total=%lu probe=%s erase=%s\n",
+                  context, key, (unsigned long)used, (unsigned long)avail,
+                  (unsigned long)total, probe, erase);
+  } else {
+    Serial.printf("save: %s key '%s' failed -- nvs stats unavailable probe=%s erase=%s\n",
+                  context, key, probe, erase);
+  }
+}

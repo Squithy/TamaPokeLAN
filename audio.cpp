@@ -6,6 +6,7 @@
 #include <Wire.h>
 #include <ESP_I2S.h>
 #include <Preferences.h>
+#include "nvsinfo.h"   // logKeyFailure(): the vol/snd settings writes were silent
 
 // ---------------------------------------------------------------------------
 // Audio del TamaPoke: códec ES8311 (DAC -> amplificador PA -> altavoz) por I2S.
@@ -260,7 +261,7 @@ void audioSetVolume(uint8_t v) {
   gVol = v > 10 ? 10 : v;
   Preferences p;
   p.begin("tamapoke", false);
-  p.putUChar("vol", gVol);
+  if (!p.putUChar("vol", gVol)) logKeyFailure("audio", "vol");
   p.end();
 }
 uint8_t audioVolume() { return gVol; }
@@ -299,7 +300,7 @@ void audioSetEnabled(bool on) {
   gOn = on;
   Preferences p;
   p.begin("tamapoke", false);
-  p.putBool("snd", on);
+  if (!p.putBool("snd", on)) logKeyFailure("audio", "snd");
   p.end();
 }
 bool audioEnabled() { return gOn; }

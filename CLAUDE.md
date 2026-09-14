@@ -20,6 +20,7 @@ Personal, non-commercial fan project. Code MIT; sprites CC BY-NC (PMD SpriteColl
 | `pin_config.h` | Board pinout — from the official Waveshare repo, don't invent values |
 | `tools/*.py` | Sprite pipeline (PMD fetch/pack, thumbs, bundle, USB send) |
 | `tools/emu/` | Desktop emulator: runs the real firmware in an SDL window |
+| `tools/debugger/` | Serial monitor + save editor GUI, for live hardware debugging (`python3 tools/debugger/debugger_gui.py`). Not part of the firmware |
 | `web/` | ESP Web Tools installer page + prebuilt `tamapoke.bin` + `sprites-<region>.pak` (committed: release assets have no CORS) |
 
 ## Screenshots — and why they went a dozen releases stale
@@ -526,6 +527,125 @@ to live -- every gesture from the main screen is taken (see below).
 ## TODO
 
 Working state, so it survives a closed session. Tick items off as they land.
+
+### Found on real two-board LAN testing, real hardware, four boards (2026-09-10)
+
+First actual multiplayer session end to end, and it surfaced three real bugs
+-- all of them the same shape as CLAUDE.md's own most-repeated trap, a rule
+enforced on one path and not its twin. All three fixed and flashed; none of
+this has had more than one evening on a board yet. `FW_VERSION` moved to
+**3.23** for it (local bump, not a release -- see HANDOVER.md § 1a).
+
+**1. `focusSwap()` could duplicate a creature into both the party and the live
+slot.** It did two independent, non-atomic NVS writes for one logical
+handover: `party.replaceAt()` (always committed) then `pet.switchTo()`
+(commits the checkpoint). If the second write failed -- confirmed happening
+for real, see #2 below -- the party blob already showed the outgoing pet
+banked while the on-disk pet checkpoint still ALSO showed that same pet as
+live. A reboot before the next successful save reloaded the same creature in
+two places at once. This is exactly the shape the egg/farewell handover was
+already fixed for (the party handover rides inside the pet checkpoint's own
+tail so both commit together) -- `focusSwap()` predates that fix and was never
+routed through it.
+
+Fixed differently rather than rebuilding that whole mechanism: `Pet::save()`
+and `Pet::switchTo()` now return `bool` (did it actually land), and
+`focusSwap()` calls `switchTo()` FIRST and only commits the party-side write
+if it succeeded. A failure leaves the party slot untouched; the outgoing pet's
+data stays in RAM and the existing `pendingSave`/retry machinery catches it up
+on the next successful save. `focus_test.cpp` has a negative check using the
+emulator's `nvsFailWritesAfter()` fault injection -- it forces the exact
+failure and asserts the party slot is NOT corrupted.
+
+**2. A failing checkpoint write retried on every single loop iteration.**
+`Pet::flushSave()`'s caller in `loop()` checks `pendingSave` while dimmed/
+asleep, and a FAILED save never clears `pendingSave` -- only success does. A
+real capture showed ~250 `save: pet checkpoint failed` lines in under 200ms.
+Every retry is a real flash write (stalls both cores ~1s on this chip) done at
+loop speed for as long as whatever broke the write kept being broken. Fixed
+with `Pet::retryDue()` (a `SAVE_RETRY_COOLDOWN_MS` = 5s cooldown since
+`lastSaveAttempt`, set on every attempt) gating that one call site. Also added
+`logCkptFailure()`, which prints WHICH stage failed (the `putBytes` write
+itself, or the read-back verify) plus live NVS headroom, since the old single
+undifferentiated message could not distinguish those two very different
+failure modes. **Still open: why the write fails at all** -- captured with
+healthy headroom (`used=202 avail=302 total=630`), so it is not a full
+partition. Worth re-watching now that #3 is fixed, since a radio left running
+could plausibly be contributing.
+
+**3. `lanLeave()` was missing from two of the three ways a LAN battle ends.**
+`lanLeave()` shuts the ESP-NOW radio off and resets `lan.state` to
+`LINK_OFF` -- `btlRun()`'s own exit calls it, but `battleTap()`'s two dismiss
+paths (the win-screen dismiss, and the message-queue dismiss that a mid-battle
+disconnect also uses) did not. Reported live: dismissing the "rival left"
+message after a guest quit mid-fight crashed the host with `boot: reset=TASK
+WATCHDOG -- something blocked too long`, breadcrumbed on the `'battle'`
+screen. Leaving the radio fully initialised and never torn down, with
+`lan.state` stuck at `LINK_LOST` instead of `LINK_OFF`, while dropping straight
+onto a LAN screen that expects neither, is exactly the shape of a blocking
+driver call that never returns. Both missing call sites now call `lanLeave()`,
+matching `btlRun()`. **Not yet re-confirmed on hardware** -- the fix is
+flashed, but nobody has reproduced the original guest-quits-mid-battle-then-
+dismiss sequence against it yet. Do that first before trusting this closed.
+
+**Tooling that came out of chasing these:** `tools/debugger/` (`debugger_gui.py`
++ `tpsave.py`) -- a tkinter serial console built specifically because the
+ad-hoc PowerShell one-shot connections used earlier in the same session were
+themselves triggering `USB_UART_CHIP_RESET` on every connect (opening a port
+toggles DTR/RTS by default; this board's USB-CDC-JTAG resets on that signal).
+Holds one persistent connection with DTR/RTS held low, decodes a live
+`EXPORT` into an editable save (live pet, party, box, bag, rivals, the
+petA/petB/plyA/plyB checkpoints), flags duplicate-creature and unconsumed-
+handover findings automatically, and has a one-click bug-report bundle (last
+50 log lines + a fresh save dump + session counters, commented for reading
+cold). See the file's own docstring for the rest. Not part of the firmware;
+lives entirely under `tools/debugger/`.
+
+**4. Follow-up session, same day: item 2's "still open" answered, plus two
+more false alarms in the new per-key logging itself.** `FW_VERSION` moved to
+**3.24**.
+
+The checkpoint write was failing because of **a stale `Pet::prefs` handle** --
+degraded by a long session's worth of WIPE/IMPORT/save cycles, not by NVS
+space (headroom was healthy every capture) and not corruption. Confirmed with
+a clean test: close and reopen the SAME `prefs` object `Pet` already uses
+everywhere else, retry the identical write on it, nothing else changed. It
+succeeded immediately. `saveCoreSnapshot()`/`savePlayerSnapshot()` now do
+exactly that once on a write failure before giving up. This is what was
+silently blocking `focusSwap()`'s party swap in the bug report that started
+this whole session ("RAISE THIS ONE" doing nothing after a wild catch) -- the
+checkpoint write failed, `switchTo()` failed with it via item 1's fix above,
+and nothing on screen said why until this.
+
+Extending the same per-key failure logging from item 2 to the ~50 legacy keys
+in `Pet::save()` (so every `put*()` call, not just the checkpoints, logs which
+key failed) surfaced two keys -- `nick` and `tnam` -- "failing" on literally
+every single save, including immediately after the fix above proved the
+handle healthy. Both turned out to be false alarms in the new logging, not
+real failures: `Preferences::putString()` returns `strlen(value)` on success,
+which is **0** for an empty string -- indistinguishable from its own
+0-on-failure return. `nick` is empty by design whenever a pet has not been
+nicknamed (the species name is the intended fallback); `tnam` was empty
+because this particular save had never had a trainer name set. Fixed by only
+treating a 0 return as a real failure when the value being written is itself
+non-empty, and separately, `Pet::chooseStarter()` now defaults `trainerName`
+to `"TRAINER"` if still unset when a new game picks its starter (with
+`Pet::begin()` backfilling the same default for existing saves past starter
+selection), so the empty-`tnam` case stops occurring going forward rather than
+just being logged correctly.
+
+**Found, not fixed:** `link.cpp`'s `HELLO` handshake reuses one `peerName`
+field for both your own outgoing name and the peer's incoming one -- a side
+that answers a `HELLO` while still `LISTENING`, or any `LINK_SQUADS`-state
+resend, sends the *peer's* name back to them instead of its own. This is the
+same one-field-two-jobs shape as this file's own recurring trap. It has not
+actually been observed, though: `lanOffer()` has both host and guest call
+`start()` immediately rather than one side staying passive, so squad exchange
+normally finishes before the resend path that triggers this ever fires --
+matching repeated real-world testing showing correct names. It would only
+surface under packet loss during pairing, which is what `lossy_test` exists to
+simulate on the protocol side without a radio. Worth fixing before it is
+needed, not because it has bitten anyone yet.
 
 ### Done (branch `feat/battle-foundations`, pushed)
 

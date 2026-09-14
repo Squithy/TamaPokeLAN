@@ -48,6 +48,46 @@ int main(){
   // long names must be cut, not overflow
   p.renameTrainer("ABCDEFGHIJKLMNOPQRSTUVWXYZ");
   ck(strlen(p.trainerName) <= 11, "an over-long name is truncated safely");
+
+  // --- chooseStarter() defaults an unset trainerName, so it is never "" going
+  // forward. Preferences::putString() returns strlen(value) on success, which
+  // is 0 for an empty string -- indistinguishable from its own 0-on-failure --
+  // so an empty trainerName used to log a false "save failed" on every single
+  // save. This is the fix, not just a quieter log: give it a real value.
+  {
+    p.factoryReset();                // this file shares one NVS store; start clean
+    Pet s; s.begin();
+    ck(s.awaitingStarter(), "a fresh save starts awaiting a starter");
+    ck(s.trainerName[0] == 0, "and trainerName starts empty");
+    s.chooseStarter(1);
+    ck(!strcmp(s.trainerName, "TRAINER"),
+       "choosing a starter defaults an unset trainer name");
+  }
+
+  // --- and it must NOT override a name the player already set (e.g. by
+  // renaming before the starter pick, however that becomes reachable).
+  {
+    Pet s; s.begin();
+    s.renameTrainer("ASH");
+    s.chooseStarter(4);
+    ck(!strcmp(s.trainerName, "ASH"),
+       "choosing a starter never overwrites an already-set name");
+  }
+
+  // --- begin() backfills the same default for a save that is already past
+  // starter selection with no name -- the state any save made before this
+  // fix is in, this device's included.
+  {
+    Pet s; s.begin();
+    s.chooseStarter(1);              // clears awaitingStarter()
+    strcpy(s.trainerName, "");       // simulate a pre-fix save: never named
+    s.saveNow();
+    Pet reloaded; reloaded.begin();  // load path, not newEgg()
+    ck(!reloaded.awaitingStarter(), "the backfill case is past starter pick");
+    ck(!strcmp(reloaded.trainerName, "TRAINER"),
+       "begin() backfills the default for an old, still-unnamed save");
+  }
+
   printf("%s\n", bad?"FAILURES":"all good");
   return bad?1:0;
 }

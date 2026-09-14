@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include "dex.h"
+#include "nvsinfo.h"   // logKeyFailure(): save()/boxSave() used to be silent on failure
 
 Party party;
 
@@ -91,11 +92,13 @@ void Party::begin() {
 }
 
 void Party::save() {
-  prefs.putBytes("party", slots, sizeof(slots));
+  if (prefs.putBytes("party", slots, sizeof(slots)) != sizeof(slots))
+    logKeyFailure("party", "party");
 }
 
 void Party::boxSave() {
-  prefs.putBytes("box", box, sizeof(box));
+  if (prefs.putBytes("box", box, sizeof(box)) != sizeof(box))
+    logKeyFailure("party", "box");
 }
 
 uint8_t Party::boxCount() const {

@@ -40,7 +40,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.22"
+#define FW_VERSION "3.24"
 
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(
   LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
@@ -1032,7 +1032,11 @@ void loop() {
   // y aqui no hay animacion que se corte ni dedo esperando respuesta. Con 90s
   // de inactividad la pantalla ya atenua, asi que se vuelca enseguida; el uso
   // activo persiste igual por los guardados de cada accion (comer/jugar/...).
-  if (pet.savePending() && (screenOff || dimStage >= 1 || pet.sleeping)) {
+  // retryDue() only matters here: a save that just SUCCEEDED clears
+  // savePending() regardless, so this can never delay a normal save -- it
+  // only throttles retrying a save that is still failing. See its comment in
+  // pet.h; without it, this ran on every single loop iteration while dimmed.
+  if (pet.savePending() && pet.retryDue() && (screenOff || dimStage >= 1 || pet.sleeping)) {
     pet.flushSave();
   }
 
@@ -4229,6 +4233,14 @@ static void btlThrowBall(ItemKey k) {
     btlOver = true;
     btlWon = true;
     wildStoreCaught();
+    // wildStoreCaught() saves the PARTY (or the pet checkpoint, via
+    // setEnded(), only in the both-full fallback) -- but the common case
+    // never re-saves the live pet's OWN checkpoint here. That left it
+    // several actions stale by the time anything else finally saved it,
+    // which is the moment real hardware chose to have a transient NVS write
+    // failure -- discovered only then, with a party-screen swap already in
+    // flight, instead of here where nothing is at risk either way.
+    pet.saveNow();
     audioMusic(MUS_VICTORY);
     sfxPlay(SFX_VICTORY);
     btlSay(T(S_CAUGHT), btlFoe.name);
@@ -4372,6 +4384,16 @@ static void btlResolve(uint8_t yourMove) {
       uint8_t amt = (btlHard ? 6 + random(5) : 3 + random(3)) + btlTrainer / 3;
       btlTrainGain = pet.rewardTraining(amt, btlTrainWhich);
     }
+    // Every ending shares this point before branching into wild/trainer/LAN
+    // narration below (all of which `return` after it), so one call here
+    // covers all of them rather than needing one per branch -- a badge win
+    // already saves via winBadge()/rewardTraining(), but a wild win with no
+    // catch, a loss, and a LAN result (the GUEST side especially: only the
+    // host's branch below writes a rival record) had nothing else that
+    // saved the live pet's own checkpoint here at all. Same reasoning as the
+    // wild-catch save above: cheap and safe to do now, while nothing is at
+    // risk, rather than leaving it to whatever the player does next.
+    pet.saveNow();
     audioMusic(btlWon ? MUS_VICTORY : MUS_NONE);
     if (btlWon) sfxPlay(SFX_VICTORY);
     // Tell the peer before anything else: if we stop here without sending, the
@@ -4849,7 +4871,12 @@ void battleTap(int16_t x, int16_t y) {
     audioMusic(MUS_NONE);
     battleOpen = false;
     btlWild = false;
-    if (btlLink) { btlLink = false; lanOpen = true; }
+    // lanLeave() tears down the radio (ESP-NOW + WiFi off) and resets
+    // lan.state to LINK_OFF. btlRun()'s own exit does this; this one and the
+    // one below did not, which left the radio running and lan.state stuck
+    // wherever the fight left it every time a link battle was dismissed from
+    // here instead -- see lanLeave()'s own comment.
+    if (btlLink) { lanLeave(); btlLink = false; lanOpen = true; }
     return;
   }
   if (btlMsgCount) {          // one readable event per tap; never skip queued text
@@ -4863,7 +4890,12 @@ void battleTap(int16_t x, int16_t y) {
       btlWild = false;
       // Back to the LAN screen rather than all the way out: that is where a
       // rematch is offered, and re-pairing for every fight would be tedious.
-      if (btlLink) { btlLink = false; lanOpen = true; }
+      // lanLeave() matters here specifically: this is the path a mid-battle
+      // disconnect dismisses through (see btlLinkPoll()'s S_LAN_GONE), and
+      // without it the radio was left running -- fully initialised, never
+      // torn down -- while lan.state stayed at LINK_LOST instead of
+      // LINK_OFF, going straight to a LAN screen that expects neither.
+      if (btlLink) { lanLeave(); btlLink = false; lanOpen = true; }
       return;
     }
     if (btlSwapWho >= 0) btlDoSwap();   // the replacement arrives on this beat
@@ -6063,13 +6095,54 @@ void drawMenu() {
 // An EGG is the one asymmetric case: it has nothing to bank, so the slot simply
 // empties. That is what the old frozen BRING BACK did, and it is the only way
 // this can cost you anything.
+//
+// switchTo() is called BEFORE either party write, and both are skipped if it
+// reports its save failed. This used to be the other order -- bank the
+// outgoing pet into the slot first, then switchTo() the incoming one -- and
+// on real hardware that put the SAME creature in two places at once: the
+// party write always landed, and a failed checkpoint write left the pet's
+// own on-disk record still showing the OUTGOING pet as live, so a reboot
+// before the next successful save reloaded it as live AND banked. Skipping
+// both party writes on a failed switchTo() cannot lose the outgoing pet --
+// it is still sitting in this pet's own fields in RAM, and the next
+// successful save (the existing pendingSave/retryDue() machinery) persists
+// whatever is currently live -- it can only cost the last few seconds of its
+// care state if a crash lands in the narrow window before that catches up,
+// which is the same trade every other save() caller already makes.
+// Retried before giving up, rather than accepting the first failure as final
+// -- saveHealthy()'s own rule is "a single short write can be a transient,
+// three in a row is not coming back on its own", and focusSwap() used to not
+// follow that rule at all. Real hardware showed these failures clearing up
+// within the same session with nothing else changing, which is exactly the
+// transient shape this retries for. Each attempt is a real flash write
+// (~1s stall on this chip), so a genuinely broken NVS costs a few seconds of
+// visible pause here -- a fair price for not orphaning a creature over it.
+#define FOCUS_SWAP_RETRIES 3
+
 void focusSwap(uint8_t slot) {
   if (slot >= PARTY_SLOTS) return;
   PartyMon incoming = party.slots[slot];   // by value: the slot is about to change
   if (incoming.empty()) return;
-  if (pet.isEgg()) party.releaseAt(slot);
-  else party.replaceAt(slot, pet.toPartyMon());
-  pet.switchTo(incoming);
+  bool wasEgg = pet.isEgg();
+  PartyMon outgoing = wasEgg ? PartyMon() : pet.toPartyMon();   // read BEFORE switchTo() overwrites it
+
+  bool ok = false;
+  for (uint8_t i = 0; i < FOCUS_SWAP_RETRIES && !ok; i++) ok = pet.switchTo(incoming);
+  if (!ok) {
+    // Roll back to what was live before, rather than leaving `incoming` on
+    // screen with `outgoing` orphaned -- neither live nor banked anywhere,
+    // recoverable only by a reboot landing on a stale checkpoint before the
+    // next autosave overwrites it. This is a real bug that shipped: real
+    // hardware left a starter unreachable through any UI path until reboot.
+    // If THIS save also fails, RAM and disk already agree on `outgoing` --
+    // it was never touched -- so nothing is lost either way, only another
+    // entry in the existing pendingSave/retryDue() retry queue.
+    Serial.println("focus swap: pet checkpoint failed after retries, rolling back");
+    pet.switchTo(outgoing);
+    return;
+  }
+  if (wasEgg) party.releaseAt(slot);
+  else party.replaceAt(slot, outgoing);
 }
 
 // ---------- the bag ----------

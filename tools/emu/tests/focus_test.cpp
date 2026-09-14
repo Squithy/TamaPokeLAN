@@ -126,6 +126,38 @@ int main(){
   focusSwap(PARTY_SLOTS + 3);
   ck(pet.speciesId==was, "and neither does an out-of-range slot");
 
+  // The exact bug found on real hardware: a failed checkpoint write for the
+  // INCOMING pet must not also commit the OUTGOING one into the party slot,
+  // or a reboot before the next successful save reloads the outgoing pet as
+  // live while it is ALSO sitting banked in that slot -- the same creature
+  // in two places. focusSwap() used to bank the outgoing pet unconditionally
+  // and switchTo() the incoming one second; this drives it with the second
+  // half's save forced to fail, negative-checking the order was really fixed
+  // and not just documented.
+  int16_t outgoingDex = pet.speciesId;
+  PartyMon fresh; fresh.dex=79; fresh.level=8; fresh.ivAtk=5; fresh.ivDef=5;
+  fresh.ivSpe=5; fresh.ivHp=5; fresh.stateVersion=1;
+  fresh.ageMinutes=(uint32_t)7*MINUTES_PER_LEVEL;
+  strcpy(fresh.nick,"SLOWP");
+  party.replaceAt(1, fresh);
+
+  nvsFailWritesAfter(0);            // every NVS write attempt fails from here
+  focusSwap(1);
+  nvsResumeWrites();
+  ck(pet.speciesId==79 && !strcmp(pet.nick,"SLOWP"),
+     "a failed checkpoint write still updates the live pet in RAM");
+  ck(party.slots[1].dex==79 && !strcmp(party.slots[1].nick,"SLOWP"),
+     "but the party slot is left UNTOUCHED rather than banking a duplicate");
+  ck(party.slots[1].dex != outgoingDex,
+     "so the outgoing pet is not ALSO sitting in this slot");
+
+  // Recovery: the next save, with writes working again, persists the swap
+  // that already happened in RAM -- nothing about the failure above left it
+  // permanently stuck.
+  pet.saveNow();
+  Pet reloaded2; reloaded2.begin();
+  ck(reloaded2.speciesId==79, "and a later successful save catches it up");
+
   printf(bad?"FAILED %d\n":"OK\n", bad);
   return bad?1:0;
 }
