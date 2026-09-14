@@ -47,9 +47,11 @@ m = json.load(open('web/manifest.json', encoding='utf-8'))
 m['version'] = sys.argv[1]
 # esp-web-tools' own install dialog reads this field verbatim as
 # "Install {name}" -- baking the version in here is what makes that dialog
-# say "Install TamaPoke version 3.27" instead of a bare, unversioned "Install
-# TamaPoke" that gives no hint whether the right build is about to be flashed.
-m['name'] = f'TamaPoke version {sys.argv[1]}'
+# say "Install TamaPoke v3.28" instead of a bare, unversioned "Install
+# TamaPoke" that gives no hint whether the right build is about to be
+# flashed. "v3.28", not "version 3.28" -- matches the README badge and the
+# edition picker's own "TamaPoke v{tag}" labels elsewhere on this page.
+m['name'] = f'TamaPoke v{sys.argv[1]}'
 
 
 # Each part carries a hash of its own bytes as a query string.
