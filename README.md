@@ -214,14 +214,11 @@ While **awake**, per minute:
 - 🫧 **Bath:** clears poops, HYG → 100.
 - 👆 **Pet it:** +5 JOY + bond.
 - 🌙 **Sleep:** rest — ENE **+6/min**, needs drain ~**4× slower** with floors
-  (FOOD 30 / JOY 35 / HYG 45). No poops, no slip-ups, can't run away while asleep.
-  **Screen off + between midnight and 06:00 puts it to sleep**, and it stays
-  asleep until you turn the screen back on -- it wakes when *you* do, not at a
-  fixed hour. Re-checked every minute, so a device put down at 23:00 nods off
-  when midnight comes. The
-  evening is deliberately outside the window -- a six-hour night is the only part
-  of the day you are not expected to be around. The light
-  button beats both: a creature you sent to bed stays there.
+  (FOOD 30 / JOY 35 / HYG 45). No poops, no slip-ups, can't run away while
+  asleep. **Screen off between midnight and 06:00 puts it to sleep**, and it
+  stays asleep until you turn the screen back on — it wakes when *you* do, not
+  at a fixed hour. The light button always overrides: a creature you sent to
+  bed stays there regardless of the clock.
 
 ### Eggs & who you get (spawn odds)
 - **First ever pet:** you pick a starter — **Bulbasaur / Charmander / Squirtle**.
@@ -245,22 +242,9 @@ While **awake**, per minute:
 
 ### Evolution
 
-**Cross-generation evolutions are linked.** When the dex reached 386 the targets
-arrived but nothing connected them, so six Kanto species could not evolve into
-creatures that were sitting right there in the Pokedex: GOLBAT -> CROBAT,
-ONIX -> STEELIX, CHANSEY -> BLISSEY, SEADRA -> KINGDRA, SCYTHER -> SCIZOR and
-PORYGON -> PORYGON2. Those six now evolve (friendship pairs at 25, trade pairs
-at 40), and the six targets stopped hatching straight from eggs -- rarity is
-derived from being somebody's evolution, so they became evolution-only the way
-every other evolved form already was.
-
-`gen_dex_data.py --link` is the rule rather than a one-off edit: it fills in any
-evolution whose target has since joined the table, and only ever touches rows
-whose value is 0, so it cannot retune an evolution anybody already has. Sinnoh
-brings ELECTIVIRE, MAGMORTAR and RHYPERIOR waiting on exactly the same thing.
-
-- Triggers when **level ≥ its evolution level** (16 for most base forms; ~30 for
-  stone-style, ~40 for trade-style) **and every stat ≥ 40** at that moment.
+- Triggers when **level ≥ its evolution level** (16 for most base forms; ~25
+  for friendship-style like GOLBAT → CROBAT, ~30 for stone-style, ~40 for
+  trade-style like SCYTHER → SCIZOR) **and every stat ≥ 40** at that moment.
 - **Never automatic** — a button appears and **you tap to witness it** (with a
   flicker between the old and new form). Each **slip-up delays it by 1 level**.
 - You can **decline** ("keep form"); it re-offers at the next level.
@@ -467,19 +451,13 @@ ball game (and still 1 h of wellbeing passively). **VIT** can't be trained. All 
 live in the training menu now; the ball moved off the home row when it became
 defence's trainer.
 
-**TMs unlock at level 40**, all of them, and nothing before. A TM carries no level
-requirement in the data — true of the games, wrong here, because a young creature
-has few level-up moves and the spare slots were filled with the strongest TMs in the
-table. A **level 1 Squirtle opened with SURF and BLIZZARD and could beat Brock.**
+**TMs unlock at level 40**, all at once, and nothing before — so the early game
+runs on level-up moves and cheap early attacks (SCRATCH, PECK, POISON STING,
+BUBBLE, ABSORB, SPARK, FURY ATTACK and the rest), never a borrowed TM.
 
-One number rather than a curve: the first five leaders sit at **14–43**, so you
-fight the early ladder on what your species actually learns, and TMs arrive as you
-enter the back half. A creature retires at 73 and caps at 100.
-
-That only works because the move table now carries the **cheap early attacks** —
-SCRATCH, PECK, POISON STING, BUBBLE, ABSORB, SPARK, FURY ATTACK and the rest. Before
-them, ~15 % of species reached level 15 with no attacking move at all and were
-quietly leaning on TMs to fill the gap.
+The first five gym leaders sit at levels **14–43**, so you fight the early
+ladder on what your species actually learns; TMs arrive as you enter the back
+half. A creature retires at 73 and caps at 100.
 
 **Gym wins train too**, which is what makes the ladder worth replaying rather than
 a checklist you tick once:
@@ -525,29 +503,28 @@ training rather than rolling their own — special attack runs off the ATK IV an
 training, special defence off the DEF IV and training. So the physical/special
 split lives on the species, not the individual — no extra IVs to roll.
 
+### LAN battles
+
+Pair two boards over ESP-NOW from the gym ladder's **LAN BATTLE** button — one
+hosts, one joins. Bring whichever team you like: unlike the gym ladders there
+is no level or team-size cap, since you already know what your opponent is
+bringing. A running **head-to-head record** is kept against each rival —
+keyed by their device, not their typed name, so renaming doesn't reset the
+score — and shown on the pairing screen the next time you two fight.
+
 ### Retiring a creature early
 
-The farewell is only *offered* at final form and three days. **RETIRE** on the
-menu ends a creature whenever you like -- but what that costs depends entirely
-on whether the farewell had been earned yet.
+**RETIRE** on the menu ends a creature whenever you like — what it costs
+depends on whether the farewell had already been earned:
 
 | | |
 |---|---|
-| Retiring one that has **earned** its farewell | free -- it is simply the farewell reached by another button. It **joins your party** and **blesses** the next egg |
-| Retiring one that has **not** | it is **gone for good** -- not banked, not in the box -- the next egg is **neutral** instead of blessed, and the **next** creature evolves a day later |
+| Retiring one that has **earned** its farewell | free — it is simply the farewell reached by another button. It **joins your party** and **blesses** the next egg |
+| Retiring one that has **not** | it is **gone for good** — not banked, not in the box — the next egg is **neutral** instead of blessed, and evolves **1 day later** than it otherwise would |
 
-An early retire used to bank the creature and bless the next egg exactly as a
-farewell does, which made it the good ending with a small tax on it: you could
-retire, check the egg, and retire again, farming blessed rolls at no real cost.
-Giving the creature up is the price now, and the confirm dialog spells out both
-halves before you accept.
-
-The penalty is `EVO_PENALTY_LEVELS` (24 at `MINUTES_PER_LEVEL 60`) added to
-every evolution threshold, the same sum `careMistakes` moves. It lands on the
-creature that hatches next, is spent by hatching it, and does **not** compound:
-three early retires in a row still cost one day. The creature's card says
-"evolves a day later" while it carries the debt, and the confirm dialog says the
-price before you accept it.
+That evolution delay does not compound: retiring early more than once in a row
+still costs only one extra day. The confirm dialog states the cost before you
+accept it.
 
 ### Choosing your egg's region
 
