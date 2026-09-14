@@ -25,14 +25,21 @@
 //      loss costs narration, not correctness.
 //
 // And every wait has a deadline: a peer that goes out of range or powers off
-// ends as LINK_LOST with a message, never as a hang.
+// ends as LINK_LOST with a message, never as a hang. But liveness is judged
+// from RECEIVED traffic alone, and a side with nothing queued to resend sends
+// nothing while it waits -- so whichever side is currently just thinking about
+// a move, not transmitting, was starving the OTHER side's clock. A human
+// deciding a move routinely takes longer than the deadline, so this fired on
+// ordinary play, not just on a bad radio. LM_PING is tick()'s answer: a
+// payload-less idle heartbeat sent on the same jittered cadence whenever
+// nothing else is pending, so liveness no longer depends on anyone acting.
 //
 // The transport is a function pointer rather than a direct ESP-NOW call so the
 // protocol can be tested: two Links cross-wired in one process exercise the
 // whole handshake without a radio, and a deliberately lossy transport exercises
 // all of the above. Only the radio itself is unverifiable here.
 
-#define LINK_PROTO 2        // bump on ANY wire change; a mismatch is refused
+#define LINK_PROTO 3        // bump on ANY wire change; a mismatch is refused
 #define LINK_MAX_PAYLOAD 200
 #define LINK_NAME_LEN 12
 
@@ -43,8 +50,20 @@
 // The lossy test reproduces exactly that: with one frame in three dropped and a
 // fixed interval, one squad packet was destroyed on all ten attempts.
 #define LINK_JITTER_MS 200
-#define LINK_PAIR_TIMEOUT_MS 20000    // waiting for a peer that may not exist
-#define LINK_BATTLE_TIMEOUT_MS 12000  // mid-fight, where one is known to be there
+#define LINK_PAIR_TIMEOUT_MS 60000    // waiting for a peer that may not exist
+#define LINK_BATTLE_TIMEOUT_MS 60000  // mid-fight, where one is known to be there
+
+// Idle at LINK_READY, nothing queued to resend: the heartbeat only needs to be
+// RECEIVED, not delivered fast, so it rides its own slower cadence rather than
+// LINK_RESEND_MS -- that constant stays fast for traffic someone is actually
+// waiting on (a move, a result, a squad packet during pairing).
+#define LINK_IDLE_PING_MS 1000
+
+// A minute with nothing REAL happening -- as opposed to LINK_BATTLE_TIMEOUT_MS,
+// which the heartbeat above keeps from ever elapsing on its own. Different
+// question ("has anyone done anything") from "is the peer still there at all",
+// so it gets its own name even though it is the same number today.
+#define LINK_IDLE_MS 60000
 
 // An action is a move slot, or a switch with the high bit set. One message
 // rather than two, so turn matching and resend have a single path -- which is
@@ -80,6 +99,9 @@ enum LinkMsg : uint8_t {
   LM_END,
   LM_BYE,        // leaving on purpose, so the peer need not wait for a timeout
   LM_REMATCH,    // go again with the same squads
+  LM_PING,       // idle heartbeat: liveness only, no payload, not `keep`d --
+                 // tick() sends a fresh one each idle beat rather than
+                 // resending one until "superseded" by nothing
 };
 
 // A creature on the wire. Deliberately not `Combatant` itself: that carries
@@ -144,6 +166,12 @@ struct Link {
   uint8_t resendSeq = 0;       // varies the resend interval, see LINK_JITTER_MS
   bool sawRx = false;          // onPacket has no clock; tick() stamps it
   bool armed = false;
+
+  // Same idea as lastRx/sawRx, but LM_PING never counts -- this is "did
+  // anything REAL happen", which lastRx alone can no longer answer once a
+  // heartbeat exists to keep it fresh forever on its own.
+  uint32_t lastActivity = 0;
+  bool sawActivity = false;
 
   // set by whoever owns the radio; ctx lets a test route two Links to each other
   void (*send)(void *ctx, const uint8_t *buf, uint8_t len) = nullptr;

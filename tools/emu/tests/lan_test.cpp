@@ -29,6 +29,8 @@ extern uint8_t btlSquadN, btlSquadAt, btlFoeAt, btlMenu, btlMsgCount;
 extern uint8_t btlMyAct, btlFoeSquadN;
 extern Combatant btlFoeSquad[];
 extern uint16_t squadMask;
+extern bool btlWild, lanQuitConfirm;
+extern uint32_t lanWaitSince;
 extern bool pickOpen, lanWantHost;
 extern uint8_t pickTrainer, pickPage;
 extern bool pickHard;
@@ -166,6 +168,41 @@ int main(){
   lan.resultN = 3; lan.resultNew = true;
   render();
   ck(!lan.resultNew && btlYou.hp==before, "a runt result is dropped, not half-applied");
+
+  // --- QUIT while purely waiting on the rival. Available only past
+  // LAN_QUIT_AFTER_MS (30000), and only after a confirm -- geometry is
+  // hardcoded here the same way the switch-grid tap above is, since the
+  // .ino's #defines do not cross the translation unit.
+  {
+    btlWild = false; btlLink = true; btlLinkHost = false;
+    btlOver = false; btlMsgCount = 0; btlMenu = 0;
+    lan.state = LINK_WAITING;      // guest already acted, purely waiting now
+    lanWaitSince = 0;
+    render();                      // renderBattle() arms the wait clock
+    ck(lanWaitSince != 0, "renderBattle arms the wait clock once waiting starts");
+
+    battleTap(233, 410);           // BTL_BACK_X..+W, BTL_BACK_Y..+H
+    ck(!lanQuitConfirm, "too early: QUIT is not offered yet");
+
+    // Unsigned wraparound subtraction, same idiom link.cpp's own timeouts use:
+    // correct regardless of millis()'s absolute size, since only the
+    // difference is ever read back.
+    lanWaitSince = millis() - 30001;   // the wait "began" 30s+ ago
+    render();
+    battleTap(233, 410);
+    ck(lanQuitConfirm, "tapping QUIT after the wait arms the confirm");
+
+    battleTap(233, 288);           // CONFIRM_B2_Y: NO
+    ck(!lanQuitConfirm && btlLink, "NO keeps the fight going");
+
+    lanWaitSince = millis() - 30001;
+    render();
+    battleTap(233, 410);
+    ck(lanQuitConfirm, "QUIT is offered again on the next long wait");
+    battleTap(233, 226);           // CONFIRM_B1_Y: YES
+    ck(!btlLink && lanOpen && !lanQuitConfirm,
+       "YES leaves the fight for good, same as RUN already could");
+  }
 
   // --- the team you pick is the team that gets offered
   {

@@ -450,6 +450,26 @@ uint8_t btlTrainGain = 0;    // what the win trained, for the win screen
 uint8_t btlTrainWhich = 0;
 bool btlLink = false;      // this fight is against another device
 bool btlLinkHost = false;
+
+// "Waiting for the rival" has no upper bound of its own -- the idle heartbeat
+// that keeps the link alive during a slow decision looks identical to a peer
+// that will never answer. Rather than guess a timeout on the player's behalf,
+// a QUIT button appears once the wait has run a while, and the player judges
+// for themself. Both host and guest can be the one purely waiting (see
+// lanIsWaiting()), so this is not a host/guest split.
+#define LAN_QUIT_AFTER_MS 30000
+bool lanQuitConfirm = false;
+uint32_t lanWaitSince = 0;   // 0 = not currently waiting on the rival
+
+// True whenever this device has done everything it can for the current turn
+// and is purely waiting on the rival's radio -- render() and battleTap() must
+// agree on this or a tap that looks swallowed by the wait screen could still
+// land on whatever is invisibly underneath it.
+static bool lanIsWaiting() {
+  return btlLink && !btlOver &&
+         (btlLinkHost ? (btlMyAct && !lan.hasPeerAct())
+                      : (lan.state == LINK_WAITING));
+}
 static bool gymUnlocked(uint8_t idx, bool hard) {
   return idx == 0 || pet.hasBadge(gymRegion, idx - 1, hard);
 }
@@ -4000,6 +4020,8 @@ void startLinkBattle() {
   btlMenu = 0;
   btlWinUntil = 0;
   btlSwapWho = -1;
+  lanWaitSince = 0;      // a rematch reuses this screen; the old wait is over
+  lanQuitConfirm = false;
   btlFaintUntil[0] = btlFaintUntil[1] = 0;
   btlEnterUntil[0] = btlEnterUntil[1] = 0;
   btlHpShown[0] = btlYou.maxHp;
@@ -4609,9 +4631,13 @@ void renderBattle() {
   // Waiting on the other device. Without this the screen is identical to the
   // one where it is your turn, so a tap that has been sent and a tap that was
   // never registered look exactly the same.
-  bool lanWait = btlLink && !btlOver &&
-                 (btlLinkHost ? (btlMyAct && !lan.hasPeerAct())
-                              : (lan.state == LINK_WAITING));
+  bool lanWait = lanIsWaiting();
+  if (lanWait) {
+    if (!lanWaitSince) lanWaitSince = millis();
+  } else {
+    lanWaitSince = 0;
+    lanQuitConfirm = false;   // the dialog cannot outlive the wait it belongs to
+  }
   if (lanWait && !btlMsgCount) {
     gfx->fillRoundRect(BTL_GRID_X, BTL_GRID_Y, 328, BTL_GRID_H, 12, UI_WHITE);
     gfx->drawRoundRect(BTL_GRID_X, BTL_GRID_Y, 328, BTL_GRID_H, 12, UI_INK);
@@ -4620,6 +4646,22 @@ void renderBattle() {
     const char *w = T(S_LAN_WAITFOE);
     gfx->setCursor(CX - (int)strlen(w) * 6, BTL_GRID_Y + 48);
     gfx->print(w);
+    // BTL_BACK_X/Y is unused space at this menu level (drawBtlBack() is only
+    // called from the OTHER btlMenu branches below) -- reused here rather than
+    // claiming new geometry for a button that only appears sometimes.
+    if (millis() - lanWaitSince >= LAN_QUIT_AFTER_MS) {
+      gfx->fillRoundRect(BTL_BACK_X, BTL_BACK_Y, BTL_BACK_W, BTL_BACK_H, 11, UI_BAR_WARN);
+      gfx->drawRoundRect(BTL_BACK_X, BTL_BACK_Y, BTL_BACK_W, BTL_BACK_H, 11, UI_INK);
+      gfx->setTextColor(UI_INK);
+      gfx->setTextSize(2);
+      const char *qb = T(S_LAN_QUIT);
+      gfx->setCursor(CX - (int)strlen(qb) * 6, BTL_BACK_Y + 14);
+      gfx->print(qb);
+    }
+    if (lanQuitConfirm) {
+      drawConfirmPanel(T(S_LAN_QUIT_Q), nullptr, nullptr, UI_BAR_BAD,
+                        T(S_YES), UI_BAR_BAD, UI_WHITE, T(S_NO), UI_TRACK, UI_INK);
+    }
   } else if (btlMsgCount) {            // narration takes over the menu area
     gfx->fillRoundRect(BTL_GRID_X, BTL_GRID_Y, 328, BTL_GRID_H, 12, UI_WHITE);
     gfx->drawRoundRect(BTL_GRID_X, BTL_GRID_Y, 328, BTL_GRID_H, 12, UI_INK);
@@ -4899,6 +4941,34 @@ void battleTap(int16_t x, int16_t y) {
       return;
     }
     if (btlSwapWho >= 0) btlDoSwap();   // the replacement arrives on this beat
+    return;
+  }
+  if (lanQuitConfirm) {
+    int c1t, c1b, c2t, c2b;
+    uiConfirmRects(&c1t, &c1b, &c2t, &c2b);
+    bool inX = (x >= CONFIRM_BTN_X && x <= CONFIRM_BTN_X + CONFIRM_BTN_W);
+    if (inX && y >= c1t && y <= c1b) {      // YES -- leave for good
+      lanQuitConfirm = false;
+      btlRun();      // a link fight is never wild, so this IS the LAN exit path
+      return;
+    }
+    if (inX && y >= c2t && y <= c2b) {      // NO
+      lanQuitConfirm = false;
+      sfxPlay(SFX_TAP);
+    }
+    return;   // modal: a miss must not fall through to whatever is underneath
+  }
+  if (lanIsWaiting()) {
+    // Nothing else on this screen may respond while purely waiting on the
+    // rival -- the four cells underneath the wait panel are still hit-tested
+    // otherwise, invisible but tappable, which is exactly the "modal that
+    // leaks a miss through" shape CLAUDE.md section 4 warns about.
+    if (millis() - lanWaitSince >= LAN_QUIT_AFTER_MS &&
+        x >= BTL_BACK_X && x <= BTL_BACK_X + BTL_BACK_W &&
+        y >= BTL_BACK_Y && y <= BTL_BACK_Y + BTL_BACK_H) {
+      sfxPlay(SFX_TAP);
+      lanQuitConfirm = true;
+    }
     return;
   }
   if (btlMenu == 0) {

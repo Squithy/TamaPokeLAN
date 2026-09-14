@@ -147,6 +147,11 @@ enum StrId : uint8_t {
   S_FOUND_ITEM,     // a wild win's drop
   S_FOCUS,          // party/box sheet: raise this one instead of the live pet
   S_FOCUS_NOW,      // ...and the label once it already is the one being raised
+  // A way out of "waiting for the rival" that does not require the rival's
+  // radio to ever answer. S_YES/S_NO on the confirm are reused, same as the
+  // release dialog does.
+  S_LAN_QUIT,       // the button, once the wait has run long enough to show it
+  S_LAN_QUIT_Q,     // ...and the confirmation
   STR_COUNT
 };
 

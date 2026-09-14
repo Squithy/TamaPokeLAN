@@ -185,6 +185,56 @@ int main(){
     deaf=false;
   }
 
+  // --- but idle is not deaf: nobody acting must not read as nobody there ----
+  // A human deciding a move routinely takes longer than the old battle
+  // deadline. Unlike the deaf peer above, the radio here works fine; nobody
+  // has simply tapped anything yet. The idle heartbeat (LM_PING) keeps lastRx
+  // fresh through that on its own -- proven by staying READY comfortably past
+  // what used to be the timeout, for as long as LINK_IDLE_MS allows.
+  {
+    seen=dropped=0; dropEvery=0; dupEvery=0; deaf=false;
+    pair(true,false);
+    run(3000);
+    ck(A.ready() && B.ready(), "paired");
+    run(LINK_IDLE_MS - 5000, 500);   // short of the idle cutoff
+    ck(A.state==LINK_READY && B.state==LINK_READY,
+       "an idle READY link outlives the old battle timeout on its heartbeat alone");
+  }
+
+  // --- but idle is not forever: true silence still ends the link -----------
+  // LM_PING alone would keep lastRx fresh indefinitely, which is exactly the
+  // gap lastActivity/LINK_IDLE_MS closes: a full LINK_IDLE_MS with nothing
+  // REAL exchanged (as opposed to a ping) hangs the link up on its own,
+  // rather than both radios idling forever because nobody ever acted.
+  {
+    seen=dropped=0; dropEvery=0; dupEvery=0; deaf=false;
+    pair(true,false);
+    run(3000);
+    ck(A.ready() && B.ready(), "paired");
+    run(LINK_IDLE_MS + 3000, 500);
+    ck(A.state==LINK_LOST && B.state==LINK_LOST,
+       "a truly idle READY link ends itself rather than idling forever");
+  }
+  {
+    // Same idle window, but one side has already acted and is sitting in
+    // WAITING while the other is still just thinking -- the asymmetric case
+    // that actually broke on hardware, since only ONE side had anything to
+    // resend. This is a KNOWN, accepted gap in the idle check above: the
+    // guest's own resent ACT is real traffic, so it keeps the host's
+    // lastActivity fresh even though nothing new is happening, and WAITING is
+    // deliberately exempt from the idle check entirely (it is meant to be
+    // short-lived, bounded by LINK_BATTLE_TIMEOUT_MS instead). So this pair
+    // can sit here past LINK_IDLE_MS without the link hanging up on its own --
+    // by design, not by oversight.
+    seen=dropped=0; deaf=false;
+    pair(true,false);
+    run(3000);
+    B.sendAct(1);                              // guest acts; host keeps thinking
+    run(LINK_IDLE_MS + 3000, 500);
+    ck(A.hasPeerAct(), "the host still has the guest's action waiting");
+    ck(B.state==LINK_WAITING, "and the guest is still waiting on a result, not LOST");
+  }
+
   // --- leaving on purpose is instant, not a timeout ------------------------
   {
     pair(true,false);

@@ -142,6 +142,8 @@ void Link::begin(bool host, const char *myName) {
   lastRx = 0;
   sawRx = false;
   armed = false;
+  lastActivity = 0;
+  sawActivity = false;
   peerName[0] = 0;
   (void)myName;
 }
@@ -215,8 +217,9 @@ void Link::rearm() {
 // once a frame; `now` is passed in so a test can drive time directly.
 void Link::tick(uint32_t now) {
   if (!live() || state == LINK_DONE) return;
-  if (!armed) { armed = true; lastRx = now; txAt = now; }
+  if (!armed) { armed = true; lastRx = now; lastActivity = now; txAt = now; }
   if (sawRx) { sawRx = false; lastRx = now; }
+  if (sawActivity) { sawActivity = false; lastActivity = now; }
 
   uint32_t limit = (state == LINK_READY || state == LINK_WAITING)
                      ? LINK_BATTLE_TIMEOUT_MS : LINK_PAIR_TIMEOUT_MS;
@@ -228,10 +231,25 @@ void Link::tick(uint32_t now) {
     txLive = false;
     return;
   }
+  // Distinct from the check above: lastRx never goes stale on its own once the
+  // idle heartbeat exists, so this is the only thing that can still notice
+  // "paired, and then both players just walked away". Only at LINK_READY --
+  // LINK_WAITING is inherently short-lived, bounded by the timeout above.
+  if (state == LINK_READY && now - lastActivity > LINK_IDLE_MS) {
+    sendBye();
+    return;
+  }
 
+  // Nothing queued to resend and nothing but a heartbeat to send: that gets
+  // its own slower cadence, since it only needs to be RECEIVED, not delivered
+  // fast -- LINK_RESEND_MS stays fast for traffic someone is actually waiting
+  // on (a move, a result, a squad packet during pairing).
+  bool idling = !txLive && state != LINK_HANDSHAKE && state != LINK_SQUADS &&
+                (state == LINK_READY || state == LINK_WAITING);
+  uint32_t base = idling ? LINK_IDLE_PING_MS : LINK_RESEND_MS;
   // Derived from our id, so the two sides never settle into the same rhythm as
   // each other or as whatever is stepping on the channel.
-  uint32_t wait = LINK_RESEND_MS + ((uint32_t)(id + resendSeq * 37u) % LINK_JITTER_MS);
+  uint32_t wait = base + ((uint32_t)(id + resendSeq * 37u) % LINK_JITTER_MS);
   if (now - txAt < wait) return;
   txAt = now;
   resendSeq++;
@@ -242,6 +260,13 @@ void Link::tick(uint32_t now) {
     sendSquad(*this, resendSeq);
   } else if (txLive) {
     rawSend(*this, tx, txN);
+  } else if (idling) {
+    // A human deciding a move routinely takes longer than LINK_BATTLE_TIMEOUT_MS.
+    // Without this, the side currently thinking sends nothing and silently
+    // starves the OTHER side's lastRx, dropping the link mid-fight for no
+    // radio-level reason at all. A ping with no payload only needs to be
+    // RECEIVED to do its job.
+    put(*this, LM_PING, nullptr, 0);
   }
 }
 
@@ -252,6 +277,7 @@ void Link::onPacket(const uint8_t *buf, uint8_t len) {
   const uint8_t *body = buf + HDR;
   if (state == LINK_REFUSED) return;   // an incompatible peer stays refused
   sawRx = true;    // proof of life. onPacket has no clock, so tick() stamps it
+  sawActivity = true;   // proof something REAL happened; LM_PING retracts this
 
   switch (type) {
     case LM_HELLO: {
@@ -351,6 +377,9 @@ void Link::onPacket(const uint8_t *buf, uint8_t len) {
     case LM_REMATCH:
       if (!theirsN || !mineN) return;
       rearm();
+      return;
+    case LM_PING:
+      sawActivity = false;   // liveness only -- sawRx above already did its job
       return;
     default:
       return;                          // unknown type: ignore, do not desync
