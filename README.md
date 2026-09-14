@@ -1,6 +1,6 @@
 # TamaPoke
 
-[![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://eperdeme.github.io/TamaPoke/web/)
+[![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://reallyjustsomeguy.github.io/TamaPokeLANExp/web/)
 [![MakerWorld](https://img.shields.io/badge/MakerWorld-3D%20case-00AE42?logo=bambulab&logoColor=white)](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)
 ![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)
 ![Firmware](https://img.shields.io/badge/firmware-v3.26-8A2BE2)
@@ -13,21 +13,23 @@ A gen-1-Pokémon-inspired tamagotchi for the
 over QSPI, CST9217 touch over I2C). Raise any of the 1025, evolve it, train it
 and complete them all (shinies included).
 
-> ### 🙏 This is a fork of [**socquique/TamaPoke**](https://github.com/socquique/TamaPoke) by **Quique Tortosa**
+> ### 🙏 This is a fork of a fork: [**socquique/TamaPoke**](https://github.com/socquique/TamaPoke) → [**DylanPDao/TamaPoke**](https://github.com/DylanPDao/TamaPoke) → here
 >
-> Quique wrote the original TamaPoke — the firmware, the sprite pipeline, the
-> six-language UI, the web installer, the whole thing. This fork builds on that
-> work; it did not start it. If you like this, go **[star the
-> original](https://github.com/socquique/TamaPoke)**.
+> Quique Tortosa wrote the original TamaPoke — the firmware, the sprite
+> pipeline, the six-language UI, the web installer, the whole thing. Dylan Dao
+> forked and extended it (Kalos/Alola, several real-hardware save-corruption
+> fixes). This fork builds on both; it did not start any of it. If you like
+> this, go star **[the original](https://github.com/socquique/TamaPoke)** and
+> **[Dylan's fork](https://github.com/DylanPDao/TamaPoke)**.
 >
-> Original: MIT © 2026 Quique Tortosa. Changes in this fork are MIT on the same
-> terms.
+> Original: MIT © 2026 Quique Tortosa. Changes in this fork and in Dylan's are
+> MIT on the same terms.
 
 > **Personal, non-commercial fan project.** Code is MIT; the sprites are from
 > PMD SpriteCollab (CC BY-NC, Pokémon © Nintendo/Game Freak), and the 3D case is
 > CC BY-NC-SA. See **[License](#license)** and **Credits**.
 
-🔴 **3D-printed Pokéball case + print profiles → [on MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)** · flash it in your browser → **[web installer](https://eperdeme.github.io/TamaPoke/web/)**
+🔴 **3D-printed Pokéball case + print profiles → [on MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)** · flash it in your browser → **[web installer](https://reallyjustsomeguy.github.io/TamaPokeLANExp/web/)**
 
 ## Screens
 
