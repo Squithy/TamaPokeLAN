@@ -271,27 +271,43 @@ brings ELECTIVIRE, MAGMORTAR and RHYPERIOR waiting on exactly the same thing.
   sprite pack is on the card, so evolving can never hand you a creature the
   device cannot draw.
 
-### Your party
-- A **farewell** or a **release** doesn't end the relationship any more — the creature
-  **joins your party** (6 slots), keeping its species, nickname, shiny status, IVs,
-  training, moves, the level it reached **and its whole care state**. It is frozen
-  *while stored*: it does not age or train until you raise it again.
-- **Choosing who you raise.** Tap a party slot and press **RAISE THIS ONE**. It is a
-  true *exchange* — the creature on the main screen takes the slot the newcomer
-  vacates — so it needs no free slot and nothing is ever lost. Both keep their
-  full care state, so swapping away and back returns the creature exactly as it
-  was rather than a blanked copy. The one asymmetric case is an **egg**: it has
-  nothing to bank, so its slot simply empties.
-- A **runaway does not join.** It's the one ending with a cost, and letting a
-  neglected pet come back on the team would remove it. **Neither does an early
-  retire** — see "Retiring a creature early" below.
-- **Letting one go for good.** Tap a party or box slot to open its sheet;
-  **RELEASE** removes that creature permanently. It asks first, every time, and
-  the creature does not fall through into the box — this is the one way to free
-  a slot without something taking its place. A box slot now opens the same sheet
-  rather than jumping straight into the party, and **TO PARTY** does that.
+### The three endings, and your party
+
+Every life ends one of three ways. You choose and witness each — none ever
+auto-fires:
+
+- 💛 **Farewell** — offered once it's a **final form** that has lived **3 days**.
+  Triggering it **blesses your next egg**; you can postpone it ("stay together",
+  re-offered a day later).
+- 💔 **Run-away** — if you let **all four stats sit at 0 for a full hour**. A
+  single act of care cancels it. It **curses the next egg** (forces Common).
+  **Does not ask for confirmation, deliberately** — a creature you had to
+  authorise to leave would not really be at stake.
+- 👋 **Release** — long-press the creature on the main screen to let it go on
+  your terms, no conditions.
+
+**Farewell and release bank the creature** into your party (6 slots) instead
+of ending the relationship — species, nickname, shiny status, IVs, training,
+moves, level and its whole care state, frozen until you raise it again.
+**A runaway does not join** — that's what makes it the one ending with a real
+cost — and **neither does an early retire** (see "Retiring a creature early"
+below).
+
+- **Choosing who you raise.** Tap a party slot and press **RAISE THIS ONE**. It
+  is a true *exchange* — the creature on the main screen takes the slot the
+  newcomer vacates — so it needs no free slot and nothing is ever lost. Both
+  keep their full care state, so swapping away and back returns the creature
+  exactly as it was. The one asymmetric case is an **egg**: it has nothing to
+  bank, so its slot simply empties.
+- **RELEASE also works on a banked creature** — tap a party or box slot to open
+  its sheet, where RELEASE removes it permanently. It asks first, every time,
+  and the creature does not fall into the box — the one way to free a slot
+  without something taking its place. A box slot opens the same sheet rather
+  than jumping straight into the party; **TO PARTY** does that instead.
 - With a full party you're taken straight to the party screen to pick who the
-  newcomer replaces — or to let it go. Nothing is ever overwritten silently.
+  newcomer replaces, or to let it go. Nothing is ever overwritten silently.
+
+After any ending, a **new egg** appears.
 
 ### Wild encounters, catching and the bag
 
@@ -393,18 +409,6 @@ A caught creature takes a party slot, then a box slot, then asks — the same pa
 farewell already uses. It is **not** added to the Pokédex on capture: registration
 means "you raised this", so it happens when you actually make it the one you raise.
 
-### The three endings (you choose & witness each — none auto-fire)
-- 💛 **Farewell** — when it's a **final form** that has lived **3 days**. A button
-  appears; triggering it **blesses your next egg**. You can **postpone** ("stay
-  together", re-offered in a day). The good ending.
-- 💔 **Run-away** — if you let **all four stats sit at 0 for a full hour**. A single
-  act of care cancels it. It **curses the next egg** (forces Common). The sad ending.
-  **It does not ask for confirmation, deliberately** — a creature you had to
-  authorise to leave would not really be at stake.
-- 👋 **Release** — long-press the creature to let it go on your terms (neutral).
-
-After any ending, a **new egg** appears.
-
 ### Bonds, streaks, medals, Pokédex
 - **Streak** (player-wide, survives across pets): first care each real day; milestones
   at **3 / 7 / 30 / 100** days; skipping a day breaks it.
@@ -492,6 +496,34 @@ picks one; and the IV-bound ceiling above still applies, so a win can never push
 stat past what its IV allows. Banked members are frozen at what they were banked
 with, and battling already costs the live pet energy — that, not a cooldown, is
 what rate-limits rematching. A fully trained creature is told so.
+
+### Moves
+
+Each creature knows up to **4 moves**, from a pool of 77. Two kinds:
+
+- **Level-up moves** are gated: Charizard learns FLAMETHROWER at 34, WING ATTACK
+  at 36, DRAGON RAGE at 54. A hatchling starts with **only** what its species
+  knows at level 1 — a Charmander opens with GROWL alone, and the other three
+  slots stay empty. Crossing a gate fills an empty slot silently; with all four
+  full you get a **prompt** asking which to forget (or to skip it). Offers queue,
+  so coming back to a pet that aged two weeks offline asks one at a time.
+  Evolving keeps the moves it already has, and the new form's gates take over —
+  moves it would have learned *below* your current level are not backfilled,
+  same as the real games.
+- **TMs** have no level gate and are chosen on demand, from the **MOVES** page of
+  the stats card (swipe across, then tap a slot). A move that is *also* a TM
+  keeps its level gate — otherwise every gated move would come free, since most
+  of them were sold as TMs at some point. Levels come from FireRed/LeafGreen,
+  the Kanto games that still gate properly.
+
+Moves **freeze when a pet is banked** into the party, alongside its level and
+training: the set you chose while it was alive is what it fights with forever.
+
+**Special attack and defence** come off the species' own `bSpA`/`bSpD` base stats
+(Alakazam is 50 Attack but 135 Special Attack), reusing the physical IV and
+training rather than rolling their own — special attack runs off the ATK IV and
+training, special defence off the DEF IV and training. So the physical/special
+split lives on the species, not the individual — no extra IVs to roll.
 
 ### Retiring a creature early
 
@@ -646,11 +678,7 @@ background biome), evolution line with gen-1 levels, rarities and starters.
 type chart (both from PokéAPI). Note these are **current** values, not Gen 1 ones —
 Pidgeot has 101 Speed here, not the 91 it had in Red/Blue. `gen_dex.py` emits
 `dex.h` (the `DEX_TBL[152]` table). The pet's identity is its Pokédex number
-(persisted in NVS).
-
-- **Evolution** gen-1 style (levels 16/36/…; stones ≈30, trade ≈40; Eevee
-  branches to whichever evolution you're missing). Each slip-up delays it 1
-  level; it won't evolve with any stat < 40 or while asleep.
+(persisted in NVS). See [Evolution](#evolution) in Game manual for the rules.
 
 ## Types
 
@@ -673,51 +701,6 @@ Seven of the original 151 differ from their Gen 1 typing: Magnemite and Magneton
 (Gen 6) — the first two losing Normal entirely.
 
 Typing is shown on the Battle page of the stat card.
-
-## Battle stats and training
-
-Each creature has ATK/DEF/SPD/VIT = **base stat** + level + **IV** (0–31, rolled
-at hatch, `IV × level/100` exactly as in the real games) + **training**:
-- SPEED ← the **reaction test** (~2 reactions = 1 pt, cap +18 per session)
-- DEFENSE ← accumulated wellbeing (1 h resting or well-cared = +1)
-- STRENGTH ← the training bag (~4 hits = 1 pt, cap +18 per session)
-- VIT (vitality, from the base HP stat) — not trainable
-
-### Moves
-
-Each creature knows up to **4 moves**, from a pool of 77. Two kinds:
-
-- **Level-up moves** are gated: Charizard learns FLAMETHROWER at 34, WING ATTACK
-  at 36, DRAGON RAGE at 54. A hatchling starts with **only** what its species
-  knows at level 1 — a Charmander opens with GROWL alone, and the other three
-  slots stay empty. Crossing a gate fills an empty slot silently; with all four
-  full you get a **prompt** asking which to forget (or to skip it). Offers queue,
-  so coming back to a pet that aged two weeks offline asks one at a time.
-  Evolving keeps the moves it already has, and the new form's gates take over —
-  moves it would have learned *below* your current level are not backfilled,
-  same as the real games.
-- **TMs** have no level gate and are chosen on demand, from the **MOVES** page of
-  the stats card (swipe across, then tap a slot).
-
-Levels come from FireRed/LeafGreen, the Kanto games that still gate properly.
-A move that is *also* a TM keeps its level gate — otherwise every gated move
-would come free, since most of them were sold as TMs at some point.
-
-Moves **freeze when a pet is banked** into the party, alongside its level and
-training: the set you chose while it was alive is what it fights with forever.
-
-**Special attack and defence** come off the species' own `bSpA`/`bSpD` base stats
-(Alakazam is 50 Attack but 135 Special Attack), reusing the physical IV and
-training rather than rolling their own: special attack runs off the ATK IV and
-training, special defence off the DEF IV and training. So the physical/special
-split lives on the species, not the individual — no extra IVs to roll.
-
-The IV also sets **how far each stat can be trained at all** (77–100), so a
-well-rolled individual has a genuinely higher ceiling, not just a head start.
-See [Battle stats & IVs](#battle-stats--ivs) for the numbers.
-
-Shown on the Battle page of the stat card. The (hidden) weight goes up with candy
-and burns off with training.
 
 ## Backgrounds: biome + real time
 
