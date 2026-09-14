@@ -265,6 +265,20 @@ h3 { margin-bottom: 6px; font-size: 17px; letter-spacing: 0; }
 .button svg { width: 18px; height: 18px; }
 .button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 5px 12px rgba(37, 35, 29, 0.09); }
 .button:disabled, .button[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+/* Step 1 after step 2 has appeared: still a real, clickable button (running it
+   again resets both steps for the next board), just visually stepped back --
+   unlike :disabled above, which this deliberately does not use. Actually grey
+   (the page's own neutral tones), not just faded green. */
+/* .button.button-dim, not just .button-dim: this sits on the same element as
+   .button-primary (added/removed at runtime, never swapped), and needs to win
+   over it regardless of which rule comes first in the sheet. */
+.button.button-dim { background: var(--line); border-color: var(--line-strong); color: var(--ink-soft); }
+/* .button.button-primary.button-dim:hover, all three classes: .button-primary
+   .button-dim:hover alone is STILL tied with .button-primary:hover:not(:disabled)
+   below (2 classes + hover == 1 class + hover + :not(:disabled), both c=3) and
+   loses by coming first in the sheet -- that tie is the actual green-on-hover
+   bug. Three classes (c=4) is what actually wins it, unambiguously. */
+.button.button-primary.button-dim:hover { background: var(--line-strong); color: var(--ink); }
 .button-primary { border-color: var(--green-dark); color: var(--ink); background: var(--green); }
 .button-primary:hover:not(:disabled) { background: var(--green-dark); }
 .button-accent { border-color: var(--red-dark); color: #fff; background: var(--red); }

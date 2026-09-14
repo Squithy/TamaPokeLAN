@@ -875,8 +875,8 @@ async function renderHistory() {
 // arrives too late for the browser to still count it as one. Chrome logs
 // nothing when that happens; it just never opens a port chooser, which reads
 // exactly like a hang. So this stops at the backup and hands the actual click
-// back to the player: promptInstall() re-labels the real install button so a
-// second, genuine click is what starts the flash.
+// back to the player: promptInstall() reveals the real "Install update"
+// button, and a genuine click on THAT is what starts the flash.
 async function backupThenFlash() {
   resetInstallPrompt();
   setBusy(true);
@@ -898,46 +898,47 @@ async function backupThenFlash() {
       await storeBackup(capture);
       downloadCapture(capture);
       captured = true;
-      log(`Backup verified (${capture.parsed.blob.length} bytes) and downloaded. Click Install below to flash.`);
+      log(`Backup verified (${capture.parsed.blob.length} bytes) and downloaded. Click Install update to flash.`);
     } catch (error) {
       // A board with nothing to back up is the normal case for a NEW one, and a
       // board in download mode is not running firmware at all so nothing answers
       // EXPORT. Neither is a reason to stand between the player and a flash --
-      // say what happened and point at Install instead of guessing for them.
-      log(`No backup taken: ${error.message}. Click Install below to flash.`);
+      // say what happened and point at Install update instead of guessing for them.
+      log(`No backup taken: ${error.message}. Click Install update to flash.`);
     }
   } catch (error) {
-    log(`Could not connect for a backup: ${error.message}. Click Install below to flash.`);
+    log(`Could not connect for a backup: ${error.message}. Click Install update to flash.`);
   } finally {
-    await releasePort(captured ? 'Backed up; click Install to flash' : 'Click Install to flash');
+    await releasePort(captured ? 'Backed up; Install update is ready' : 'Install update is ready');
     setBusy(false);
   }
   promptInstall();
 }
 
-// Draws the eye to the real install button rather than trying to click it for
+// Reveals the real "Install update" button rather than trying to click it for
 // the player -- see backupThenFlash()'s comment for why a synthetic click does
-// not work. "Install without backup" would read as a lie right after a backup
-// just happened, so this swaps it for "Install now" and the same accent style
-// the page already uses elsewhere for a ready-to-go action.
+// not work. The backup button dims (not disabled -- running it again resets
+// both, for a second board) and its label changes entirely, pointing at the
+// button that just appeared.
 function promptInstall() {
-  const activate = document.querySelector('#flash-button [slot="activate"]');
-  if (!activate) return;
-  activate.innerHTML = '<i data-lucide="cpu" aria-hidden="true"></i> Install now';
-  activate.classList.remove('button-secondary');
-  activate.classList.add('button-accent');
+  const step2 = byId('install-step2');
+  if (step2) step2.hidden = false;
+  const step1 = byId('backup-flash');
+  const label = byId('backup-flash-label');
+  if (step1) step1.classList.add('button-dim');
+  if (label) label.textContent = 'Backup complete, now →';
   if (window.lucide) lucide.createIcons();
 }
 
-// Back to its original label/style at the start of a fresh backup attempt, so
+// Back to the starting state at the beginning of a fresh backup attempt, so
 // this cannot linger stale across a failed connection or a second board.
 function resetInstallPrompt() {
-  const activate = document.querySelector('#flash-button [slot="activate"]');
-  if (!activate) return;
-  activate.innerHTML = '<i data-lucide="cpu" aria-hidden="true"></i> Install without backup';
-  activate.classList.remove('button-accent');
-  activate.classList.add('button-secondary');
-  if (window.lucide) lucide.createIcons();
+  const step2 = byId('install-step2');
+  if (step2) step2.hidden = true;
+  const step1 = byId('backup-flash');
+  const label = byId('backup-flash-label');
+  if (step1) step1.classList.remove('button-dim');
+  if (label) label.textContent = 'Backup, then install';
 }
 
 async function restoreText(text, label) {
@@ -1066,6 +1067,15 @@ byId('restore').addEventListener('change', (event) => {
   event.target.value = '';
 });
 byId('backup-flash').addEventListener('click', backupThenFlash);
+// Forwards SYNCHRONOUSLY, with no await in between -- that is what makes this
+// different from backupThenFlash()'s old, broken auto-click. A real, direct
+// click's transient activation survives a same-tick synthetic click just fine;
+// it is only lost across the async gap a backup needs. The real "Install
+// update" button is `hidden` until a backup attempt reveals it, but hidden
+// elements can still be .click()'d, so this reaches it either way.
+byId('install-skip').addEventListener('click', () => {
+  document.querySelector('#flash-button [slot="activate"]').click();
+});
 byId('history-clear').addEventListener('click', async () => {
   if (!window.confirm('Delete every backup stored in this browser? The .tpsave files you downloaded are not affected.')) return;
   await clearBackups();

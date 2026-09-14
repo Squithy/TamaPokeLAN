@@ -57,19 +57,20 @@
       <div class="action-row flash-row">
         <button class="button button-primary" id="backup-flash">
           <i data-lucide="shield-check" aria-hidden="true"></i>
-          Back up, then install
+          <span id="backup-flash-label">Backup, then install</span>
         </button>
         <esp-web-install-button id="flash-button" manifest="manifest.json">
-          <button class="button button-secondary" slot="activate">
+          <button class="button button-primary" slot="activate" id="install-step2" hidden>
             <i data-lucide="cpu" aria-hidden="true"></i>
-            Install without backup
+            Install update
           </button>
           <span slot="unsupported">Use Chrome or Edge to flash this board.</span>
           <span slot="not-allowed">This installer requires HTTPS.</span>
         </esp-web-install-button>
+        <button class="button button-quiet button-small" id="install-skip">Install without backup</button>
         <p class="action-copy" id="edition-summary">The standard edition includes every game feature and loads region art from microSD.</p>
       </div>
-      <p class="action-copy"><strong>Back up, then install</strong> reads the save off the board, checks it, downloads it and keeps a copy in this browser. The Install button is then highlighted as <strong>Install now</strong> -- click it to flash. Your browser will ask which board to use twice: once to read the save, once to flash. A brand-new board has nothing to back up and goes straight to that point.</p>
+      <p class="action-copy"><strong>Backup, then install</strong> reads the save off the board, checks it, downloads it and keeps a copy in this browser. Once it's done, the button reads <strong>Backup complete, now →</strong> and <strong>Install update</strong> appears next to it -- click that to flash. Your browser will ask which board to use twice: once to read the save, once to flash. A brand-new board has nothing to back up and goes straight there. Prefer to skip the backup entirely? Use <strong>Install without backup</strong> instead.</p>
 
       <section class="release-notes" aria-labelledby="release-notes-title">
         <header>
