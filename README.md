@@ -178,6 +178,7 @@ the navigation — three axes, one meaning each, everywhere:
   full power-off (the RTC keeps running, so time still passes while it's off).
 
 ### Time & leveling
+
 - **1 real minute = 1 in-game minute.** Your Pokémon gains **+1 level every hour**
   of real time. Leveling is purely time-based — caring well doesn't speed it up,
   but neglect *delays evolution*.
@@ -187,6 +188,7 @@ the navigation — three axes, one meaning each, everywhere:
 - It keeps **aging while powered off** (the RTC runs), catching up to **2 weeks** max.
 
 ### The four stats (0–100)
+
 Needs: **FOOD**, **JOY**, **ENE** (energy), **HYG** (hygiene). Start 80 / 80 / 80 / 100.
 While **awake**, per minute:
 
@@ -202,6 +204,7 @@ While **awake**, per minute:
   Each slip-up **delays evolution by 1 level** and cools the bond by 1.
 
 ### Actions
+
 - 🍎 **Berry** (3 flavors): +25 FOOD. Each species has a **hidden favorite flavor**
   → +35 FOOD, +10 JOY, ♥, bond, and it gets revealed.
 - 🍬 **Candy:** +10 FOOD, +12 JOY, but **+12 weight** (fattening).
@@ -228,6 +231,7 @@ above) offers before it asks for a starter. See "Choosing your egg's region"
 below for what changing it later does and doesn't affect.
 
 ### Eggs & who you get (spawn odds)
+
 - Hatch the egg: tap it **3×** (or wait — it hatches on its own).
 - Every later egg rolls a **rarity tier** (over the ~79 base forms that come from eggs):
 
@@ -469,6 +473,7 @@ every game:
 | Protein / Iron / Carbos | $9,800 each |
 
 ### Battle stats & IVs
+
 Every pet rolls four **IVs** (individual values, 0–31) at hatch — ATK / DEF / SPD /
 VIT — that never change and make each one genuinely unique:
 
@@ -508,6 +513,7 @@ training, special defence off the DEF IV and training. So the physical/special
 split lives on the species, not the individual — no extra IVs to roll.
 
 ### Bonds, streaks, medals, Pokédex
+
 - **Streak** (player-wide, survives across pets): first care each real day; milestones
   at **3 / 7 / 30 / 100** days; skipping a day breaks it.
 - **Bond** (per pet, resets on hatch): grows with affection (**cap +20/day**), cools on
