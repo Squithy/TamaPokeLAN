@@ -108,6 +108,15 @@ sprite pack is not installed are skipped. Weaken one and throw a ball to keep it
 a caught creature goes to the party or the box, and does *not* fill the Pokédex
 until you actually raise it.
 
+### The Poké Mart
+
+| The catalogue | Buying something |
+|---|---|
+| <img src="docs/screens/mart.png" width="240"> | <img src="docs/screens/martconfirm.png" width="240"> |
+
+Sits between EXPLORE and the gyms on the tile axis. Real steps become
+Pokédollars at 1:1 — see § Game manual below for the wallet cap and price list.
+
 ### Collecting
 
 | Pick a region | Kanto | Johto |
