@@ -31,6 +31,34 @@ and complete them all (shinies included).
 
 🔴 **3D-printed Pokéball case + print profiles → [on MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)** · flash it in your browser → **[web installer](https://reallyjustsomeguy.github.io/TamaPokeLANExp/web/)**
 
+## Status
+
+Running on hardware. Implemented: 1025 species + shinies animated from microSD, full
+life cycle (egg by rarity → evolution → farewell/release/runaway, each gated
+behind a decision dialog), bred-Pokédex with gallery, turn-based trainer, wild
+and LAN battles, **wild capture and a shared bag**, battle stats (IVs +
+training), retention hooks (streak / bond / medals / name), biome + real-time
+backgrounds, ball minigame, training bag, animated bath, RTC with offline
+progression, battery (AXP2101) and PWR button, anti-burn-in dimming,
+**sound (ES8311)**, **6 UI languages (English default)**, **starter choice on
+first run**, and a one-click **web installer**.
+
+All nine regions are in the dex. **Galar and Paldea have no sprite pack yet**, so
+they show as NEEDS PACK and stay out of the egg pool until one is built — the
+same gating every region has always used.
+
+**Added in this fork:**
+
+- **LAN battles are fully working now** — pair two boards over ESP-NOW and
+  battle head-to-head, with a running win/loss record kept per rival.
+- **The Poké Mart** — spend real steps, turned into Pokédollars, on balls,
+  potions and vitamins between EXPLORE and the gyms.
+- **A software pedometer** drives it — the QMI8658's own onboard step
+  counter never worked reliably on this board, so steps are detected from
+  the raw accelerometer instead.
+- **`tools/debugger/`** — a live serial monitor + save editor for testing
+  against real hardware. Not part of the firmware itself.
+
 ## Screens
 
 All shots are straight off the 466x466 round panel, rendered headlessly by the
@@ -126,24 +154,6 @@ Pokédollars at 1:1 — see § Game manual below for the wallet cap and price li
 | Trainer card | Johto badges | The box |
 |---|---|---|
 | <img src="docs/screens/player.png" width="240"> | <img src="docs/screens/player2.png" width="240"> | <img src="docs/screens/box.png" width="240"> |
-
-## Status
-
-Running on hardware. Implemented: 1025 species + shinies animated from microSD, full
-life cycle (egg by rarity → evolution → farewell/release/runaway, each gated
-behind a decision dialog), bred-Pokédex with gallery, turn-based trainer, wild
-and LAN battles, **wild capture and a shared bag**, battle stats (IVs +
-training), retention hooks (streak / bond / medals / name), biome + real-time
-backgrounds, ball minigame, training bag, animated bath, RTC with offline
-progression, battery (AXP2101) and PWR button, anti-burn-in dimming,
-**sound (ES8311)**, **6 UI languages (English default)**, **starter choice on
-first run**, and a one-click **web installer**.
-
-All nine regions are in the dex. **Galar and Paldea have no sprite pack yet**, so
-they show as NEEDS PACK and stay out of the egg pool until one is built — the
-same gating every region has always used.
-
-Pending: 3D case, soak test. See **Roadmap**.
 
 ## Game manual (the actual numbers)
 
@@ -840,18 +850,6 @@ encounter) ·
 `LS` / `PUT` (SD files).
 
 To test fast: lower `PET_TICK_MS`, `MINUTES_PER_LEVEL` and `FAREWELL_AGE_MIN` in `pet.h`.
-
-## Roadmap
-
-- **Soak test** 24–48 h (instrumentation ready: `HEALTH` command/heartbeat).
-- **Galar and Paldea sprite packs** — the data is in; the art needs a
-  `pack_pmd.py` run. Until then both regions read NEEDS PACK.
-- **Galar and Paldea gym ladders** — `trainers.h` stops at seven regions. There
-  is no pret disassembly for either, so they cannot be verified the way
-  `verify_rosters.py` checks the others; writing them from memory is how the
-  first Johto and Hoenn ladders ended up with ten errors.
-
-*(Done: wild encounters, catching and the bag; 3D-printed case [published on MakerWorld](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi); repo public with the browser installer + one-click sprite bundle.)*
 
 ## Community forks
 
