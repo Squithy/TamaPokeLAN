@@ -43,7 +43,7 @@ echo "OK -> web/firmware/ (4 parts + tamapoke.bin for a blank board)"
 FW="$(grep -o '"[0-9.]*"' TamaPoke.ino | head -1 | tr -d '"')"
 python3 - "$FW" <<'PYEOF'
 import hashlib, json, sys
-m = json.load(open('web/manifest.json'))
+m = json.load(open('web/manifest.json', encoding='utf-8'))
 m['version'] = sys.argv[1]
 
 
@@ -86,7 +86,7 @@ m['builds'] = [{
 # This was set to False on purpose once, on the belief that the name meant what
 # it says. It destroyed two real saves. Do not "fix" it back.
 m['new_install_prompt_erase'] = True
-json.dump(m, open('web/manifest.json', 'w'), indent=2)
+json.dump(m, open('web/manifest.json', 'w', encoding='utf-8'), indent=2)
 print('manifest version -> ' + sys.argv[1])
 PYEOF
 
@@ -124,21 +124,21 @@ def key(path):
 
 save_key = key('web/savefile.js')
 installer = pathlib.Path('web/installer.js')
-src = installer.read_text()
+src = installer.read_text(encoding='utf-8')
 src, n = re.subn(r"(from '\./savefile\.js)(?:\?v=[0-9a-f]+)?'",
                  lambda m: f"{m.group(1)}?v={save_key}'", src)
 if n != 1:
     raise SystemExit(f"expected exactly one savefile.js import in installer.js, found {n}")
-installer.write_text(src)
+installer.write_text(src, encoding='utf-8')
 
 installer_key = key('web/installer.js')
 index = pathlib.Path('web/index.html')
-html = index.read_text()
+html = index.read_text(encoding='utf-8')
 html, n = re.subn(r'(src="installer\.js)(?:\?v=[0-9a-f]+)?"',
                   lambda m: f'{m.group(1)}?v={installer_key}"', html)
 if n != 1:
     raise SystemExit(f"expected exactly one installer.js script tag, found {n}")
-index.write_text(html)
+index.write_text(html, encoding='utf-8')
 print(f'js cache keys -> savefile {save_key}, installer {installer_key}')
 PYEOF
 

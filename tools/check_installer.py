@@ -57,7 +57,7 @@ def main():
     manifest_path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(WEB, "manifest.json")
     manifest_path = os.path.abspath(manifest_path)
     manifest_dir = os.path.dirname(manifest_path)
-    manifest = json.load(open(manifest_path))
+    manifest = json.load(open(manifest_path, encoding="utf-8"))
 
     parts = []
     for build in manifest.get("builds", []):

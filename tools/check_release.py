@@ -47,7 +47,7 @@ def check_tag_on_main(tag):
 
 
 def version_from(pattern, path):
-    match = re.search(pattern, path.read_text())
+    match = re.search(pattern, path.read_text(encoding="utf-8"))
     if not match:
         fail(f"could not find version in {path.relative_to(ROOT)}")
     return match.group(1)
@@ -57,7 +57,7 @@ def main():
     source_version = version_from(r'#define FW_VERSION "([0-9.]+)"', ROOT / 'TamaPoke.ino')
     readme_version = version_from(r'firmware-v([0-9.]+)-', ROOT / 'README.md')
     manifest_path = ROOT / 'web' / 'manifest.json'
-    manifest = json.loads(manifest_path.read_text())
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     manifest_version = str(manifest.get('version', ''))
     tag = (sys.argv[1] if len(sys.argv) > 1 else f'v{source_version}').removeprefix('v')
 
@@ -98,7 +98,7 @@ def main():
         (ROOT / 'web' / 'index.html', r'src="installer\.js\?v=([0-9a-f]+)"'),
     ):
         target = ROOT / 'web' / ('savefile.js' if source.name == 'installer.js' else 'installer.js')
-        match = re.search(pattern, source.read_text())
+        match = re.search(pattern, source.read_text(encoding="utf-8"))
         if not match:
             fail(f'{source.relative_to(ROOT)} has no cache key for {target.name}; run tools/build_web.sh')
         expected = hashlib.sha256(target.read_bytes()).hexdigest()[:16]
@@ -116,7 +116,7 @@ def main():
     notes = ROOT / 'docs' / 'release-notes' / f'v{tag}.md'
     if not notes.is_file():
         fail(f'missing {notes.relative_to(ROOT)} -- write the changelog before tagging')
-    body = notes.read_text().strip()
+    body = notes.read_text(encoding="utf-8").strip()
     if len(body) < 200 or '\n' not in body:
         fail(f'{notes.relative_to(ROOT)} is too thin to be a changelog')
     print(f'release v{source_version} is internally consistent, '
