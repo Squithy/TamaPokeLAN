@@ -274,10 +274,10 @@ void audioBegin() {
   i2s.setPins(I2S_BCK_IO, I2S_WS_IO, I2S_DO_IO, I2S_DI_IO, I2S_MCK_IO);
   if (!i2s.begin(I2S_MODE_STD, SAMPLE_RATE, I2S_DATA_BIT_WIDTH_16BIT,
                  I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH)) {
-    Serial.println("I2S begin fallo");
+    Serial.println("I2S begin failed");
     return;
   }
-  if (!es8311Init()) { Serial.println("ES8311 no responde (audio off)"); return; }
+  if (!es8311Init()) { Serial.println("ES8311 not responding (audio off)"); return; }
 
   Preferences p;
   p.begin("tamapoke", true);

@@ -915,7 +915,7 @@ void setup() {
 
   // QSPI a 80MHz (por defecto 40): el flush del framebuffer es el cuello de
   // botella del fps (~56ms a 40MHz). Si el panel mostrara basura, bajar a 40M.
-  if (!gfx->begin(80000000)) Serial.println("gfx->begin() fallo");
+  if (!gfx->begin(80000000)) Serial.println("gfx->begin() failed");
   panel->setBrightness(180);
 
   touch.setPins(TP_RESET, TP_INT);
@@ -924,7 +924,7 @@ void setup() {
     touchOk = touch.begin(Wire, 0x5A, IIC_SDA, IIC_SCL);
     if (!touchOk) delay(150);
   }
-  if (!touchOk) Serial.println("CST9217 no detectado");
+  if (!touchOk) Serial.println("CST9217 not detected");
   // begin() deja el chip en modo comando (lee la identidad y no sale);
   // hace falta un reset por hardware para que vuelva a reportar toques
   touch.reset();
@@ -949,7 +949,7 @@ void setup() {
   if (e == 0) {
     rtcSetEpoch(1767225600UL);  // RTC virgen: semilla (la hora absoluta da igual,
     e = rtcEpoch();             // solo importan las diferencias)
-    Serial.println("RTC sin hora: sembrado, sin progresion offline esta vez");
+    Serial.println("RTC has no time: seeded, no offline progression this time");
   }
   pet.syncClock(e);
 
@@ -1161,7 +1161,7 @@ void handleSerial() {
     if (n >= 1 && n <= DEX_COUNT) {
       pet.prevSpeciesId = pet.speciesId;
       pet.speciesId = n;
-      Serial.printf("especie #%d %s\n", n, DEX_TBL[n].name);
+      Serial.printf("species #%d %s\n", n, DEX_TBL[n].name);
     }
     Serial.println("DONE");
   } else if (line.startsWith("LVL ")) {
@@ -1325,7 +1325,7 @@ void handleSerial() {
       startBattle(dex, lvl > 0 ? (uint8_t)lvl : pet.level());
       Serial.printf("battle vs %s Lv.%u\n", DEX_TBL[dex].name, btlFoe.level);
     } else {
-      Serial.println("uso: BATTLE <dex> [nivel]");
+      Serial.println("usage: BATTLE <dex> [level]");
     }
     Serial.println("DONE");
   } else if (line == "SHINY") {  // alterna shiny del actual (pruebas)

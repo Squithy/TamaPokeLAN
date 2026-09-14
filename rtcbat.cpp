@@ -12,7 +12,7 @@ static bool pmuOk = false;
 
 bool rtcBegin() {
   rtcOk = rtc.begin(Wire, IIC_SDA, IIC_SCL);
-  if (!rtcOk) Serial.println("PCF85063 no detectado");
+  if (!rtcOk) Serial.println("PCF85063 not detected");
   return rtcOk;
 }
 
@@ -42,7 +42,7 @@ void rtcSetEpoch(uint32_t e) {
 
 bool batBegin() {
   pmuOk = pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL);
-  if (!pmuOk) Serial.println("AXP2101 no detectado");
+  if (!pmuOk) Serial.println("AXP2101 not detected");
   return pmuOk;
 }
 
@@ -52,7 +52,7 @@ bool batBegin() {
 // se ve negra aunque el resto funcione. Hay que llamarla ANTES de gfx->begin().
 void pmuEnablePanel() {
   if (!pmu.begin(Wire, AXP2101_SLAVE_ADDRESS, IIC_SDA, IIC_SCL)) {
-    Serial.println("AXP2101 no detectado (pmuEnablePanel)");
+    Serial.println("AXP2101 not detected (pmuEnablePanel)");
     return;
   }
   pmu.setBLDO1Voltage(3300);   // OLED VDD

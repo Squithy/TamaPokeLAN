@@ -112,7 +112,7 @@ bool linkNowBegin(Link *l) {
   // and it looks like a dead link rather than a mismatch.
   esp_wifi_set_channel(1, WIFI_SECOND_CHAN_NONE);
   if (esp_now_init() != ESP_OK) {
-    Serial.println("ESP-NOW init fallo");
+    Serial.println("ESP-NOW init failed");
     WiFi.mode(WIFI_OFF);
     return false;
   }
@@ -123,7 +123,7 @@ bool linkNowBegin(Link *l) {
   peer.channel = 1;
   peer.encrypt = false;
   if (esp_now_add_peer(&peer) != ESP_OK) {
-    Serial.println("ESP-NOW peer fallo");
+    Serial.println("ESP-NOW peer failed");
     esp_now_deinit();
     WiFi.mode(WIFI_OFF);
     return false;
@@ -136,7 +136,7 @@ bool linkNowBegin(Link *l) {
   gUp = true;
   l->send = nowSend;
   l->ctx = nullptr;
-  Serial.printf("ESP-NOW listo, id %04X\n", l->id);
+  Serial.printf("ESP-NOW ready, id %04X\n", l->id);
   return true;
 }
 
@@ -147,7 +147,7 @@ void linkNowEnd() {
   esp_now_unregister_send_cb();
   esp_now_deinit();
   WiFi.mode(WIFI_OFF);          // the radio is not free: turn it off when done
-  Serial.printf("ESP-NOW fin: rx %u tx %u fallos %u ajenos %u desborde %u\n",
+  Serial.printf("ESP-NOW end: rx %u tx %u fails %u foreign %u overflow %u\n",
                 gStats.rx, gStats.tx, gStats.txFail, gStats.foreign,
                 gStats.overflow);
   gLocked = false;

@@ -628,7 +628,7 @@ void Pet::syncClock(uint32_t nowEpoch) {
     // la evolucion NO se aplica offline: queda lista y la dispara el usuario
     // tocando al bicho cuando vuelve (para que vea la transformacion)
   }
-  Serial.printf("offline: %u min aplicados (nv.%u)\n", mins, level());
+  Serial.printf("offline: %u min applied (lv.%u)\n", mins, level());
   save();
 }
 
