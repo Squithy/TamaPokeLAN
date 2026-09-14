@@ -866,8 +866,19 @@ async function renderHistory() {
 // The browser may ask which board to use twice -- once for us, once for the
 // installer -- and there is nothing to be done about that from here, so the page
 // says it will happen rather than letting it surprise anyone.
+//
+// It does NOT click the installer for you, and that is not an oversight -- it
+// was tried, and it silently did nothing. navigator.serial.requestPort(), which
+// esp-web-tools calls internally, needs a live, direct user gesture, and a
+// synthetic click fired after this function's awaits -- especially
+// downloadCapture()'s real file download, itself a gesture-consuming action --
+// arrives too late for the browser to still count it as one. Chrome logs
+// nothing when that happens; it just never opens a port chooser, which reads
+// exactly like a hang. So this stops at the backup and hands the actual click
+// back to the player: promptInstall() re-labels the real install button so a
+// second, genuine click is what starts the flash.
 async function backupThenFlash() {
-  const flashButton = byId('flash-button');
+  resetInstallPrompt();
   setBusy(true);
   let captured = false;
   try {
@@ -887,23 +898,46 @@ async function backupThenFlash() {
       await storeBackup(capture);
       downloadCapture(capture);
       captured = true;
-      log(`Backup verified before flashing (${capture.parsed.blob.length} bytes). Handing the port to the installer.`);
+      log(`Backup verified (${capture.parsed.blob.length} bytes) and downloaded. Click Install below to flash.`);
     } catch (error) {
       // A board with nothing to back up is the normal case for a NEW one, and a
       // board in download mode is not running firmware at all so nothing answers
       // EXPORT. Neither is a reason to stand between the player and a flash --
-      // say what happened and carry on.
-      log(`No backup taken: ${error.message}. Continuing to the installer.`);
+      // say what happened and point at Install instead of guessing for them.
+      log(`No backup taken: ${error.message}. Click Install below to flash.`);
     }
   } catch (error) {
-    log(`Could not connect for a backup: ${error.message}. Continuing to the installer.`);
+    log(`Could not connect for a backup: ${error.message}. Click Install below to flash.`);
   } finally {
-    await releasePort(captured ? 'Backed up; port handed to the installer' : 'Port handed to the installer');
+    await releasePort(captured ? 'Backed up; click Install to flash' : 'Click Install to flash');
     setBusy(false);
   }
-  // Opens esp-web-tools' own dialog. Deliberately after the port is released, so
-  // it can claim the device.
-  flashButton.click();
+  promptInstall();
+}
+
+// Draws the eye to the real install button rather than trying to click it for
+// the player -- see backupThenFlash()'s comment for why a synthetic click does
+// not work. "Install without backup" would read as a lie right after a backup
+// just happened, so this swaps it for "Install now" and the same accent style
+// the page already uses elsewhere for a ready-to-go action.
+function promptInstall() {
+  const activate = document.querySelector('#flash-button [slot="activate"]');
+  if (!activate) return;
+  activate.innerHTML = '<i data-lucide="cpu" aria-hidden="true"></i> Install now';
+  activate.classList.remove('button-secondary');
+  activate.classList.add('button-accent');
+  if (window.lucide) lucide.createIcons();
+}
+
+// Back to its original label/style at the start of a fresh backup attempt, so
+// this cannot linger stale across a failed connection or a second board.
+function resetInstallPrompt() {
+  const activate = document.querySelector('#flash-button [slot="activate"]');
+  if (!activate) return;
+  activate.innerHTML = '<i data-lucide="cpu" aria-hidden="true"></i> Install without backup';
+  activate.classList.remove('button-accent');
+  activate.classList.add('button-secondary');
+  if (window.lucide) lucide.createIcons();
 }
 
 async function restoreText(text, label) {
