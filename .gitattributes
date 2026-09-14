@@ -1,0 +1,15 @@
+# web/ ships byte-identical assets whose hashes are stamped into the page
+# itself (installer.js's cache key for savefile.js, index.html's for
+# installer.js -- see tools/build_web.sh). A Windows checkout with
+# core.autocrlf=true silently rewrites LF to CRLF on disk, so hashing the
+# local working tree stamps a value that never matches what a Linux CI
+# runner -- or a visitor's browser -- actually receives. Force LF on
+# checkout for every platform so the bytes hashed are always the bytes
+# shipped.
+web/*.js text eol=lf
+web/*.html text eol=lf
+web/*.json text eol=lf
+web/*.css text eol=lf
+
+web/firmware/*.bin binary
+web/*.pak binary
