@@ -528,6 +528,47 @@ to live -- every gesture from the main screen is taken (see below).
 
 Working state, so it survives a closed session. Tick items off as they land.
 
+### Done: the Poke Mart, and a real pedometer fight (2026-09-11)
+
+`FW_VERSION` 3.24 -> 3.26. A new tile, `PLAYER . PARTY . [PET] . EXPLORE .
+MART . GYM . DEX` (`TileDef`/`TILE[]` in `TamaPoke.ino` -- adding a seventh
+stop was exactly the one-table edit that section of this file already
+promised). Real steps become Pokedollars at 1:1, `Pet::wallet` capped at
+$999,999 (the real games' own money ceiling, not an invented number),
+`Pet::stepsTotal` tracked separately and never spent. Prices in `items.h` are
+researched from Bulbapedia (stable since Gen 1), not invented; Master Ball is
+deliberately never sold, matching every game. Wallet/steps ride in the player
+checkpoint's append-only tail (`PLAYER_VERSION` 1 -> 2) plus legacy `wlt`/
+`stps` keys, same reasoning as every other player-wide field. `tools/debugger/`
+updated to match -- see `tpsave.py`'s `PLAYER_KEYS`.
+
+**The QMI8658's own onboard pedometer engine does not work, at all, on any
+board anyone can be found to have gotten it working on.** Real hardware
+testing ruled it out three separate configurations deep, confirmed via
+verbose core logging that showed the chip acking every command with zero
+errors while the counter simply never moved. Replaced with a software
+magnitude-threshold detector on raw accelerometer samples -- the same
+approach two independent real projects on this exact chip already use. That
+in turn hid its OWN bug the same way: `getDataReady()` was silently returning
+false on every single poll, and only building a live diagnostic console
+command (`ACCEL`) surfaced real, sane accelerometer data and let the
+threshold be calibrated against actual measured hardware behaviour (1.35g)
+rather than a number borrowed from someone else's grip and mounting. Full
+blow-by-blow, including the GitHub issue that corroborates the hardware
+engine being broken chip-wide and not just here, is in `HANDOVER.md` §
+"1c. The Poke Mart, and the QMI8658's pedometer engine does not work" --
+worth reading in full before anyone is tempted to re-attempt
+`configPedometer()`.
+
+**Two unrelated fixes landed alongside it.** The clock/settings screen's
+cancel hint said "swipe up: cancel" in all six languages when the actual
+gesture (`onSwipeV`'s `back = dir > 0`) is swipe DOWN -- wrong everywhere,
+fixed everywhere. And the rim scrollbar's day-only colors (`UI_TRACK` track,
+`UI_INK` thumb, on every paged screen) turned out to have a real
+night-aware palette pair sitting unused the whole time (`UI_SCROLL_DAY`/
+`UI_SCROLL_NIGHT`, already contrast-tested in `palette_test.cpp`) --
+wired up for the Mart specifically, deliberately not globally.
+
 ### Done: a LAN head-to-head record (2026-09-09/10)
 
 Pinned during the first real two-board LAN session, then built the same
@@ -1770,7 +1811,7 @@ is recorded here as fact so nobody redesigns it from the old notes.
 
 | Gesture | Means | Where |
 |---|---|---|
-| Horizontal | move along the TILE AXIS | `PLAYER . PARTY . [PET] . EXPLORE . GYM . DEX` |
+| Horizontal | move along the TILE AXIS | `PLAYER . PARTY . [PET] . EXPLORE . MART . GYM . DEX` |
 | Up | deeper (the pet's card, a sheet) | everywhere |
 | Down | BACK, one level | everywhere |
 | Rim drag | PAGE the current screen | every paged screen |
@@ -1787,11 +1828,17 @@ the page and how many there are. The arc scrollbar, the rim drag and
 and its coverage from one edit. Adding a screen to `onSwipe` instead is the old
 mistake wearing new clothes.
 
-**The tile order is not arbitrary.** `PLAYER . PARTY . [PET] . EXPLORE . GYM .
-DEX` keeps yours on the left and the world on the right. Explore is beside the
-pet because it is a primary loop, not an action owned by the gym ladder. The pet
-screen names both neighboring destinations so the horizontal axis is visible
-before somebody already knows to swipe.
+**The tile order is not arbitrary.** `PLAYER . PARTY . [PET] . EXPLORE . MART .
+GYM . DEX` keeps yours on the left and the world on the right. Explore is beside
+the pet because it is a primary loop, not an action owned by the gym ladder. The
+pet screen names both neighboring destinations so the horizontal axis is visible
+before somebody already knows to swipe. The Mart sits between Explore and the
+gyms on purpose (added in v3.25): walk to earn (`Pet::addSteps()`, fed by the
+onboard QMI8658's pedometer, 1 step = $1), spend at the Mart, then prove the
+gear at a gym -- and `TileDef`/`TILE[]` (`TamaPoke.ino`) is exactly the
+single table this section already describes, so adding a seventh stop was one
+edit there plus the matching `case` in `uiTileGo()`/`uiRimTarget()`, not a
+redesign of the axis itself.
 
 **Both multi-region tiles still open on their CHOOSER**, and `swipe_test` still
 asserts it. Down backs out of a ladder to the chooser and out of the chooser to

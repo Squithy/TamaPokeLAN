@@ -5,6 +5,7 @@
 #include "Arduino_GFX_Library.h"
 #include "Preferences.h"
 #include "pet.h"
+#include "items.h"
 #include "party.h"
 #include "battle.h"
 #include <chrono>
@@ -179,7 +180,8 @@ void startTrainerBattle(uint8_t idx, bool hard);
 uint8_t currentExploreRegion();
 bool startWildBattle(uint8_t region, bool hard);
 void onTap(int16_t x, int16_t y);   // the first-boot shots tap their way in
-extern bool exploreOpen, gymOpen, playerOpen;
+extern bool exploreOpen, gymOpen, playerOpen, martOpen;
+extern ItemKey martConfirmItem;
 extern bool galleryDirty;
 extern uint8_t galleryRegion;
 extern uint8_t gymRegion;
@@ -299,6 +301,10 @@ static int shotMode(const char *screen, const char *out, int lvl, int iv, int de
     btlHitUntil[1] = millis() + 300;   // foe flinching
   }
   else if (!strcmp(screen, "explore")) exploreOpen = true;
+  else if (!strcmp(screen, "mart")) { pet.wallet = 12345; pet.stepsTotal = 87654; martOpen = true; }
+  else if (!strcmp(screen, "martconfirm")) {
+    pet.wallet = 12345; pet.stepsTotal = 87654; martOpen = true; martConfirmItem = IT_SUPERPOTION;
+  }
   else if (!strcmp(screen, "gyms")) { gymOpen = true; }
   else if (!strcmp(screen, "gympick")) { gymOpen = true; gymPick = true; }
   else if (!strcmp(screen, "dexpick")) {

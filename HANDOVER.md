@@ -19,6 +19,14 @@ restart. Read this with `CLAUDE.md`, which is the permanent knowledge and is
 > **§ 1b is later the same day** (2026-09-10) and closes the "why a checkpoint
 > write fails at all" question § 1a left open — plus two more save-path bugs
 > found chasing it.
+>
+> **§ 1c is 2026-09-11** and is unrelated to save/LAN: the Poke Mart shipped
+> (steps -> Pokedollars). Its pedometer input needed a real hardware detour —
+> the chip's own step-counting engine does not work, confirmed unfixable
+> through several honest attempts — but a software detector on raw
+> accelerometer samples does, confirmed on real hardware with a calibrated
+> threshold, after a second, unrelated bug (`getDataReady()`) nearly hid that
+> too.
 
 ---
 
@@ -204,6 +212,110 @@ testing — squad exchange finishes before the resend timer ever fires and the
 corruption path is never hit. It would only show up under packet loss during
 pairing (what `lossy_test` exists to simulate). Worth fixing before it is,
 not because it has been.
+
+---
+
+## 1c. The Poke Mart, and the QMI8658's pedometer engine does not work (2026-09-11)
+
+**Shipped:** a Poke Mart tile (between EXPLORE and GYM on the axis) that turns
+real steps into Pokedollars at 1:1, wallet capped at $999,999 -- the real
+games' own money ceiling. `FW_VERSION` moved to 3.25 for it. See `pet.h`
+(`Pet::wallet`/`stepsTotal`/`addSteps()`/`spendWallet()`), `items.h` (real
+Poke Mart prices, researched not invented), and `pedometer.cpp`.
+
+**The QMI8658's own onboard pedometer engine
+(`configPedometer()`/`getPedometerCounter()`) does not work, and was
+abandoned for a software step detector instead.** Worth the full story
+because the failure mode looked nothing like a bug at every level checked:
+
+- No `configPedometer()` call at all (assuming usable power-on defaults):
+  zero steps from 12s of active shaking on a real board.
+- Added `configPedometer()` with values scaled for a low-power ODR
+  (`ACC_ODR_LOWPOWER_21Hz`, `configPedometer(17, 200, 100, 67, 7)` -- the
+  library's own example's numbers, rescaled by the ODR ratio since the
+  library's doc says those params are literal sample counts, e.g. "80 means
+  1.6s @ ODR=50Hz"): still zero.
+- Reverted to the library's own proven example values UNSCALED
+  (`ACC_ODR_62_5Hz`, `configPedometer(50, 200, 100, 200)`, matching
+  SensorLib's `qmi8658_pedometer_deprecated.ino`): still zero, confirmed live
+  over serial both shaking it and genuinely walking with it.
+- Rebuilt with ESP32 core `DebugLevel=verbose` and forced a clean reset to
+  capture the full boot sequence: **no errors anywhere.** No "QMI8658 not
+  detected", no CTRL9 handshake timeout (the specific failure `writeCommand()`
+  logs on a real timeout -- and `configPedometer()` ignores that return value
+  entirely, so it always reports success regardless), no I2C NACKs. The chip
+  acks, the commands complete, the counter just never moves.
+
+Widened the search from "does this work on our board" to "does this work at
+all": nobody found, on any board, has this engine working through SensorLib.
+The closest data point is an open, **unanswered** GitHub issue asking whether
+anyone has gotten the chip's *other* onboard engine (AttitudeEngine, sensor
+fusion) working either:
+[lewisxhe/SensorLib#3](https://github.com/lewisxhe/SensorLib/issues/3) — no
+responses, no confirmation either way, opened 2023, still open. Whatever is
+wrong (library bug, chip firmware revision, an undocumented requirement) is
+not specific to this board or this session.
+
+Meanwhile two independent real projects on this same chip both bypass the
+hardware engine entirely: `VolosR/stepCounter` (a Waveshare AMOLED community
+project) and `Melaja/ESP32-S3-Smartwatch`, both doing straightforward
+magnitude-threshold detection on raw accelerometer samples. `pedometer.cpp`
+now does the same -- `getAccelerometer()` + `sqrt(x^2+y^2+z^2)`, a rising
+threshold crossing at 1.8g with a 100ms debounce (VolosR's own proven
+values), polled every 30ms from `loop()` rather than every 2s, because a
+software detector has to actually see the ~50-150ms footstep impact peak
+rather than read an on-chip accumulator occasionally.
+
+**First flash of the software detector ALSO read completely flat** -- zero
+steps from both shaking and real walking, exactly like every hardware-engine
+attempt before it. This time the bug was ours, not the chip's: `pedoPollSteps()`
+gated every read behind `qmi.getDataReady()`, a `STATUS0` ready-bit check that
+apparently never sets the way the library expects in this ODR/power-mode
+combination -- silently returning 0 on literally every poll, indistinguishable
+from "no steps" and just as thoroughly hidden as the CTRL9 dead end had been.
+Dropping the gate entirely (a threshold detector does not need a
+guaranteed-fresh sample; at 128Hz internal sampling against a ~33ms poll there
+is always a recent value sitting in the register) and reading the
+accelerometer unconditionally was the actual fix.
+
+Added a diagnostic `ACCEL` serial command (`pedoLastMagnitude()`) specifically
+because the earlier debugging had repeatedly been fooled by binary
+pass/fail (wallet moved or it didn't) with no visibility into *why*. It
+immediately paid for itself: a rapid poll (every ~150ms for 8s) during active
+shaking showed real, sane, varying magnitude (0.23g-1.70g) for the first
+time -- confirming the sensor and I2C path were fine all along, and the
+earlier borrowed threshold (VolosR's 1.8g) simply never got reached by this
+board/grip's actual motion. Lowered to 1.5g against that real measurement,
+which **confirmed the whole pipeline end to end**: wallet and `stepsTotal`
+both moved by exactly 10 during a real shake test read live over serial.
+Lowered further to 1.35g from there for sensitivity, still against measured
+hardware behaviour rather than a borrowed number -- see `pedometer.cpp` for
+the constants and their reasoning.
+
+Widened the threshold research afterward to other implementations on this
+same chip for a sanity check, not because 1.35g looked wrong: VolosR uses
+1.8g (simple crossing), Melaja's smartwatch uses a materially different
+peak-valley state machine (~1.0g of deviation from the gravity baseline, so
+effectively closer to a 2.0g raw peak, plus a 5-consecutive-step warm-up and
+420-800ms inter-step timing gate), and a commercial hip-worn pedometer
+(DigiwalkerSW200) uses 1.21g. The spread between just these three -- on
+threshold *and* algorithm shape -- says grip/mounting/motion style dominates
+over any single "correct" chip-wide number; 1.35g sits inside that whole
+range and is the only one of the four actually measured against this exact
+board.
+
+**Also landed in the same session:** the Mart's rim scrollbar now uses the
+real `UI_SCROLL_DAY`/`UI_SCROLL_NIGHT` palette pair (already defined and
+contrast-tested in `palette_test.cpp`, just never wired up) instead of the
+day-only colors every other paged screen still uses -- scoped to `SCR_MART`
+only, deliberately not a global fix. The page-number text and a new
+"tap: back" label are night-aware too, and tapping anywhere on the Mart that
+isn't a button or the confirm dialog now actually goes back (previously a
+stray tap silently did nothing, which the new label would have made a lie).
+Separately, and unrelated to the Mart: the clock/settings screen's cancel
+hint said "swipe up: cancel" in all six languages when the actual gesture is
+swipe down (`onSwipeV`'s `back = dir > 0`) -- fixed everywhere.
+`FW_VERSION` moved 3.25 -> 3.26 across this work.
 
 ---
 

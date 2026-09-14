@@ -298,6 +298,35 @@ public:
   uint16_t badgesX[GYM_REGIONS - 1] = { 0 };
   uint16_t badgesHardX[GYM_REGIONS - 1] = { 0 };
 
+  // The Poke Mart. Player-wide, like the badges above: it outlives every
+  // creature, so newEgg() must never touch it. 1 pedometer step = $1, capped at
+  // the real games' own money ceiling (money is a 3-byte field there, max
+  // 999,999) rather than an invented round number.
+  static constexpr uint32_t WALLET_CAP = 999999;
+  uint32_t wallet = 0;      // spendable, clamped at WALLET_CAP
+  uint32_t stepsTotal = 0;  // lifetime steps, uncapped and never spent -- display only
+  // Credits n steps. Called every couple of seconds while walking, so like the
+  // ordinary stat drains it only marks the periodic save pending rather than
+  // writing immediately -- an immediate save() here would turn a walk into a
+  // flash write every couple of seconds, the exact write-storm shape
+  // CLAUDE.md's NVS section warns about.
+  void addSteps(uint32_t n) {
+    if (!n) return;
+    stepsTotal += n;
+    uint32_t room = WALLET_CAP - wallet;
+    wallet += (n < room) ? n : room;
+    pendingSave = true;
+  }
+  // A Mart purchase: rare and player-initiated, so unlike addSteps() this saves
+  // immediately -- the same as winBadge()/renameTrainer(). Returns false (and
+  // spends nothing) if the wallet is short.
+  bool spendWallet(uint32_t amount) {
+    if (amount > wallet) return false;
+    wallet -= amount;
+    save();
+    return true;
+  }
+
   uint16_t badgeMask(uint8_t rg, bool hard) const {
     if (rg == 0) return hard ? badgesHard : badges;
     if (rg >= GYM_REGIONS) return 0;

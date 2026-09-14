@@ -3,7 +3,7 @@
 [![Flash in browser](https://img.shields.io/badge/flash-in%20browser-FF6B00?logo=googlechrome&logoColor=white)](https://eperdeme.github.io/TamaPoke/web/)
 [![MakerWorld](https://img.shields.io/badge/MakerWorld-3D%20case-00AE42?logo=bambulab&logoColor=white)](https://makerworld.com/es/models/2937822-tamapoke-a-pokemon-pokeball-tamagotchi)
 ![Board](https://img.shields.io/badge/board-ESP32--S3%20round%20AMOLED-E7352C?logo=espressif&logoColor=white)
-![Firmware](https://img.shields.io/badge/firmware-v3.24-8A2BE2)
+![Firmware](https://img.shields.io/badge/firmware-v3.26-8A2BE2)
 ![Code](https://img.shields.io/badge/code-MIT-blue)
 ![Languages](https://img.shields.io/badge/languages-6-FFCB05)
 [![Stars](https://img.shields.io/github/stars/DylanPDao/TamaPoke?style=flat&logo=github&color=yellow)](https://github.com/DylanPDao/TamaPoke/stargazers)
@@ -325,6 +325,24 @@ settlement can never list the same item twice.
 | **Master Ball** | **1** | catches without fail |
 
 A new save starts with **5 Poké Balls and 3 Potions**. Stacks cap at 99.
+
+**The Poké Mart**, on the tile axis between EXPLORE and the gyms, turns real
+steps (the board's onboard QMI8658 pedometer) into stock. **1 step = $1**,
+wallet capped at **$999,999** — the real games' own money ceiling, not an
+invented number — and a lifetime step count is tracked separately and never
+spent. Prices are the real Poké Mart's (stable since Gen 1); Master Ball is
+never sold, same as every game:
+
+| Item | Price |
+|---|---|
+| Poké Ball | $200 |
+| Great Ball | $600 |
+| Ultra Ball | $1,200 |
+| Potion | $300 |
+| Super Potion | $700 |
+| Hyper Potion | $1,200 |
+| Full Heal | $600 |
+| Protein / Iron / Carbos | $9,800 each |
 
 The **BAG** menu row is the field bag, and it only offers the vitamins: the pet has
 no persistent HP or ailment outside a fight, so a potion in the field would have

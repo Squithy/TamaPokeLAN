@@ -2,6 +2,7 @@
 #include "pet.h"        // MED_COUNT
 #include "move_names.h"
 #include <Preferences.h>
+#include "nvsinfo.h"   // logKeyFailure(): the lang setting write was silent
 
 Lang gLang = LANG_DEFAULT;
 static_assert(LANG_COUNT == MOVE_NAME_LANG_COUNT, "move-name language order must match Lang");
@@ -20,7 +21,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Soltar a %s?", "SI", "NO",
     "%u GOLPES", "FUERZA +%u", "NUEVO RECORD!", "RECORD: %u", "APORREA RAPIDO!",
     "PUNTOS: %u", "Que felicidad!", "+felicidad",
-    "AJUSTAR HORA", "HORA", "MIN", "desliza arriba: cancelar", "Idioma",
+    "AJUSTAR HORA", "HORA", "MIN", "desliza abajo: cancelar", "Idioma",
     "MEDALLA!", "GENIAL!", "RACHA %u DIAS!",
     "RACHA %u  rec %u", "VIN", "BAYA ???", "BAYA ROJA", "BAYA AZUL", "BAYA VERDE",
     "%s   EDAD %lud", "toca el nombre: renombrar",
@@ -52,7 +53,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Has escapado!", "No has podido escapar!", "Lanzas una %s", "%s capturado!", "Se ha soltado!",
     "Usas %s", "No ha hecho nada", "Encuentras %s!", "CRIAR A ESTE", "CRIANDO",
     "SALIR", "Salir de la lucha?",
-    "vencido: %u vez", "vencido: %u veces", "perdiste: %u vez", "perdiste: %u veces", },
+    "vencido: %u vez", "vencido: %u veces", "perdiste: %u vez", "perdiste: %u veces",
+    "TIENDA POKE", "1 paso = $1", "tus pasos de toda la vida: %lu", "Wallet: $%lu", "Comprar %s?", "COSTE: $%lu", },
   // ---------------- EN ----------------
   {
     "Evolving!", "Yum yum!", "It likes it!", "It's hungry!", "Needs a bath!",
@@ -64,7 +66,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Release %s?", "YES", "NO",
     "%u HITS", "STR +%u", "NEW RECORD!", "BEST: %u", "HIT FAST!",
     "SCORE: %u", "So much fun!", "+happiness",
-    "SET TIME", "HOUR", "MIN", "swipe up: cancel", "Lang",
+    "SET TIME", "HOUR", "MIN", "swipe down: cancel", "Lang",
     "MEDAL!", "AWESOME!", "%u DAY STREAK!",
     "STREAK %u  best %u", "BOND", "BERRY ???", "RED BERRY", "BLUE BERRY", "GREEN BERRY",
     "%s   AGE %lud", "tap name: rename",
@@ -97,7 +99,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "You got away!", "You could not get away!", "You threw a %s", "%s was caught!", "It broke free!",
     "Used %s", "It had no effect", "Found %s!", "RAISE THIS ONE", "RAISING",
     "QUIT", "Leave the battle?",
-    "defeated: %u time", "defeated: %u times", "lost to: %u time", "lost to: %u times", },
+    "defeated: %u time", "defeated: %u times", "lost to: %u time", "lost to: %u times",
+    "POKE MART", "1 pedometer step = $1", "your lifetime step count: %lu", "Wallet: $%lu", "Buy %s?", "COST: $%lu", },
   // ---------------- FR ----------------
   {
     "Il evolue!", "Miam miam!", "Il aime ca!", "Il a faim!", "Besoin d'un bain!",
@@ -109,7 +112,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Relacher %s?", "OUI", "NON",
     "%u COUPS", "FORCE +%u", "NOUVEAU RECORD!", "RECORD: %u", "FRAPPE VITE!",
     "SCORE: %u", "Trop bien!", "+bonheur",
-    "REGLER L'HEURE", "HEURE", "MIN", "glisse haut: annuler", "Langue",
+    "REGLER L'HEURE", "HEURE", "MIN", "glisse bas: annuler", "Langue",
     "MEDAILLE!", "SUPER!", "SERIE %u JOURS!",
     "SERIE %u  rec %u", "LIEN", "BAIE ???", "BAIE ROUGE", "BAIE BLEUE", "BAIE VERTE",
     "%s   AGE %lud", "touche le nom: renommer",
@@ -141,7 +144,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Tu as pris la fuite!", "Impossible de fuir!", "Tu lances une %s", "%s est capture!", "Il s est libere!",
     "Tu utilises %s", "Aucun effet", "Tu trouves %s!", "ELEVER CELUI-CI", "EN ELEVAGE",
     "QUITTER", "Quitter le combat?",
-    "vaincu: %u fois", "vaincu: %u fois", "perdu contre: %u fois", "perdu contre: %u fois", },
+    "vaincu: %u fois", "vaincu: %u fois", "perdu contre: %u fois", "perdu contre: %u fois",
+    "POKE MART", "1 pas = $1", "tes pas de toute la vie: %lu", "Wallet: $%lu", "Acheter %s?", "COUT: $%lu", },
   // ---------------- DE ----------------
   {
     "Entwickelt sich!", "Mampf mampf!", "Gefaellt ihm!", "Hat Hunger!", "Braucht ein Bad!",
@@ -153,7 +157,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "%s freilassen?", "JA", "NEIN",
     "%u TREFFER", "KRAFT +%u", "NEUER REKORD!", "REKORD: %u", "SCHNELL HAUEN!",
     "PUNKTE: %u", "Wie schoen!", "+Freude",
-    "ZEIT STELLEN", "STD", "MIN", "hoch wischen: abbruch", "Sprache",
+    "ZEIT STELLEN", "STD", "MIN", "runter wischen: abbruch", "Sprache",
     "MEDAILLE!", "TOLL!", "%u TAGE SERIE!",
     "SERIE %u  rek %u", "BND", "BEERE ???", "ROTE BEERE", "BLAUE BEERE", "GRUENE BEERE",
     "%s   ALTER %lud", "Name tippen: umbenennen",
@@ -185,7 +189,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Du bist entkommen!", "Flucht gescheitert!", "Du wirfst einen %s", "%s gefangen!", "Es ist entkommen!",
     "%s benutzt", "Keine Wirkung", "%s gefunden!", "DIESES AUFZIEHEN", "WIRD AUFGEZOGEN",
     "VERLASSEN", "Kampf verlassen?",
-    "besiegt: %u Mal", "besiegt: %u Mal", "verloren gegen: %u Mal", "verloren gegen: %u Mal", },
+    "besiegt: %u Mal", "besiegt: %u Mal", "verloren gegen: %u Mal", "verloren gegen: %u Mal",
+    "POKE MART", "1 Schritt = $1", "deine schritte insgesamt: %lu", "Wallet: $%lu", "%s kaufen?", "KOSTEN: $%lu", },
   // ---------------- IT ----------------
   {
     "Si evolve!", "Gnam gnam!", "Gli piace!", "Ha fame!", "Vuole un bagno!",
@@ -197,7 +202,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Liberare %s?", "SI", "NO",
     "%u COLPI", "FORZA +%u", "NUOVO RECORD!", "RECORD: %u", "COLPISCI VELOCE!",
     "PUNTI: %u", "Che gioia!", "+felicita",
-    "IMPOSTA ORA", "ORA", "MIN", "scorri su: annulla", "Lingua",
+    "IMPOSTA ORA", "ORA", "MIN", "scorri giu: annulla", "Lingua",
     "MEDAGLIA!", "GRANDE!", "SERIE %u GIORNI!",
     "SERIE %u  rec %u", "LEG", "BACCA ???", "BACCA ROSSA", "BACCA BLU", "BACCA VERDE",
     "%s   ETA %lud", "tocca il nome: rinomina",
@@ -229,7 +234,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Sei riuscito a fuggire!", "Non sei riuscito a fuggire!", "Lanci una %s", "%s catturato!", "Si e liberato!",
     "Usi %s", "Nessun effetto", "Trovi %s!", "ALLEVA QUESTO", "IN ALLEVAMENTO",
     "ESCI", "Uscire dalla lotta?",
-    "battuto: %u volta", "battuto: %u volte", "perso contro: %u volta", "perso contro: %u volte", },
+    "battuto: %u volta", "battuto: %u volte", "perso contro: %u volta", "perso contro: %u volte",
+    "POKE MART", "1 passo = $1", "i tuoi passi di sempre: %lu", "Wallet: $%lu", "Comprare %s?", "COSTO: $%lu", },
   // ---------------- PT ----------------
   {
     "Evoluindo!", "Nham nham!", "Ele gosta!", "Esta com fome!", "Precisa de banho!",
@@ -241,7 +247,7 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Soltar %s?", "SIM", "NAO",
     "%u GOLPES", "FORCA +%u", "NOVO RECORDE!", "RECORDE: %u", "BATA RAPIDO!",
     "PONTOS: %u", "Que alegria!", "+alegria",
-    "AJUSTAR HORA", "HORA", "MIN", "deslize cima: cancelar", "Idioma",
+    "AJUSTAR HORA", "HORA", "MIN", "deslize baixo: cancelar", "Idioma",
     "MEDALHA!", "OTIMO!", "%u DIAS SEGUIDOS!",
     "SEQ %u  rec %u", "LACO", "BAGA ???", "BAGA VERMELHA", "BAGA AZUL", "BAGA VERDE",
     "%s   IDADE %lud", "toque no nome: renomear",
@@ -273,7 +279,8 @@ static const char *const STRINGS[LANG_COUNT][STR_COUNT] = {
     "Conseguiste fugir!", "Nao conseguiste fugir!", "Lancas uma %s", "%s capturado!", "Escapou!",
     "Usas %s", "Sem efeito", "Encontras %s!", "CRIAR ESTE", "A CRIAR",
     "SAIR", "Sair da luta?",
-    "derrotado: %u vez", "derrotado: %u vezes", "perdeste: %u vez", "perdeste: %u vezes", },
+    "derrotado: %u vez", "derrotado: %u vezes", "perdeste: %u vez", "perdeste: %u vezes",
+    "POKE MART", "1 passo = $1", "teus passos de sempre: %lu", "Wallet: $%lu", "Comprar %s?", "CUSTO: $%lu", },
 };
 
 // Nombres de medalla en sus tres longitudes [idioma][medalla].
@@ -331,6 +338,6 @@ void setLang(Lang l) {
   gLang = l;
   Preferences p;
   p.begin("tamapoke", false);
-  p.putUChar("lang", (uint8_t)l);
+  if (!p.putUChar("lang", (uint8_t)l)) logKeyFailure("i18n", "lang");
   p.end();
 }

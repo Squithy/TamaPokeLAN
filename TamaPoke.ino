@@ -34,13 +34,14 @@
 #include "wild.h"
 #include "sdmon.h"
 #include "rtcbat.h"
+#include "pedometer.h"
 #include "nvsinfo.h"
 #include "i18n.h"
 #include "audio.h"
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.24"
+#define FW_VERSION "3.26"
 
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(
   LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
@@ -227,7 +228,7 @@ bool battleOpen = false;
 enum : uint8_t {
   SCR_STARTER = 0, SCR_REGION, SCR_GALLERY, SCR_DEXPICK, SCR_MOVEPICK, SCR_BOX,
   SCR_PARTY, SCR_KEYBOARD, SCR_CARD, SCR_PLAYER, SCR_CLOCK, SCR_GYM, SCR_GYMPICK,
-  SCR_EXPLORE, SCR_LAN, SCR_PICK, SCR_BATTLE, SCR_WIN, SCR_LEARN, SCR_TRAIN, SCR_MENU,
+  SCR_EXPLORE, SCR_MART, SCR_LAN, SCR_PICK, SCR_BATTLE, SCR_WIN, SCR_LEARN, SCR_TRAIN, SCR_MENU,
   SCR_BAGSCR, SCR_GAME, SCR_MAIN, SCR_COUNT
 };
 extern const char *const SCREEN_NAME[SCR_COUNT];   // const is internal linkage in C++
@@ -264,6 +265,9 @@ void renderBox();
 void renderBag();
 void bagTap(int16_t x, int16_t y);
 uint8_t bagPages();
+void renderMart();
+void martTap(int16_t x, int16_t y);
+uint8_t martPages();
 bool startWildBattle(uint8_t region, bool hard);
 PartyMon wildToPartyMon();
 void focusSwap(uint8_t slot);
@@ -273,7 +277,7 @@ void drawConfirmPanel(const char *q, const char *sub1, const char *sub2,
 const char *const SCREEN_NAME[SCR_COUNT] = {
   "starter", "region", "gallery", "dexpick", "movepick", "box",
   "party", "keyboard", "card", "player", "clock", "gym", "gympick",
-  "explore", "lan", "pick", "battle", "win", "learn", "train", "menu",
+  "explore", "mart", "lan", "pick", "battle", "win", "learn", "train", "menu",
   "bag", "minigame", "main"
 };
 
@@ -556,6 +560,21 @@ uint8_t bagPage = 0;
 #define BAG_PER_PAGE 5
 #define BAG_ROW_Y(i) (112 + (i) * 58)
 
+// ---------------------------------------------------------------------------
+// The Poke Mart. Between EXPLORE and GYM on the tile axis: walk to earn,
+// spend at the Mart, then prove it at the gym.
+bool martOpen = false;
+uint8_t martPage = 0;
+// The item pending a buy confirmation; ITEM_NONE means no dialog is up. A
+// value rather than a bool, like partyDetail/galleryDetail, since the dialog
+// needs to remember WHICH row was tapped.
+ItemKey martConfirmItem = ITEM_NONE;
+#define MART_PER_PAGE 3
+// Rows start well below the wallet block -- it is bold/size-4 and, per
+// uiSafeHalfWidth(), needs to sit lower on the round panel than a plain title
+// to have the chord width to not hang off the glass. See renderMart().
+#define MART_ROW_Y(i) (210 + (i) * 60)
+
 // A wild fight is a different fight, not a trainer fight with a flag: a ball
 // works, the foe can run, and RUN is a roll rather than a certainty. Every one
 // of those is asked through btlWild, so there is no second opinion about what
@@ -712,7 +731,7 @@ void uiArc(int cx, int cy, int r, int a0, int a1, int w, uint16_t col) {
 
 // The gesture model. Its tables and handlers live down beside uiCurrentScreen(),
 // but handleTouch() and onSwipe() sit ~1000 lines above them.
-#define TILE_COUNT 6   // PLAYER . PARTY . [PET] . EXPLORE . GYM . DEX
+#define TILE_COUNT 7   // PLAYER . PARTY . [PET] . EXPLORE . MART . GYM . DEX
 #define TILE_PET 2
 #define RIM_R0 186     // a drag starting outside this radius pages, not swipes
 #define RIM_STEP 20    // degrees of arc per page
@@ -925,6 +944,7 @@ void setup() {
   rtcBegin();
   batBegin();
   pwrSetup();
+  if (!pedoBegin()) Serial.println("pedometer: no QMI8658 -- the Mart earns nothing this session");
   uint32_t e = rtcEpoch();
   if (e == 0) {
     rtcSetEpoch(1767225600UL);  // RTC virgen: semilla (la hora absoluta da igual,
@@ -1068,6 +1088,21 @@ void loop() {
     if (e) pet.lastSeenEpoch = e;
   }
 
+  // A software magnitude-threshold step detector (see pedometer.cpp -- the
+  // chip's own onboard pedometer engine turned out to not work through this
+  // library, on this board or apparently anywhere) needs to actually see a
+  // footstep's ~50-150ms impact peak, not just sample it once in a while.
+  // 30ms keeps that margin without polling every single loop iteration; the
+  // CPU is already awake this whole time regardless (loop() never sleeps
+  // while the screen is on), so this costs a few extra I2C microseconds per
+  // iteration, not a new wake source.
+  static uint32_t lastPedo = 0;
+  if (now - lastPedo > 30) {
+    lastPedo = now;
+    uint32_t steps = pedoPollSteps();
+    if (steps) pet.addSteps(steps);
+  }
+
   // latido de salud cada 5 min (para el soak test; se descarta si no hay monitor)
   static uint32_t lastHealth = 0;
   if (now - lastHealth > 300000) {
@@ -1166,6 +1201,23 @@ void handleSerial() {
     }
     Serial.printf("tr=%u/%u/%u topes=%u/%u/%u\n", pet.trAtk, pet.trDef, pet.trSpe,
                   pet.trMaxAtk(), pet.trMaxDef(), pet.trMaxSpe());
+  } else if (line.startsWith("STEPS ")) {
+    // STEPS <n>: credits n pedometer steps without the QMI8658 -- the only way
+    // to test the Mart's wallet/purchase flow in the emulator, which has no
+    // IMU, and a quick way to fast-forward it on a board too.
+    long n = line.substring(6).toInt();
+    if (n < 0) n = 0;
+    pet.addSteps((uint32_t)n);
+    pet.saveNow();
+    Serial.printf("wallet=%lu steps=%lu\n", (unsigned long)pet.wallet,
+                  (unsigned long)pet.stepsTotal);
+  } else if (line == "ACCEL") {
+    // Live magnitude from the software step detector's own last read --
+    // diagnostic only, so a real board can show whether the accelerometer
+    // is producing sane, moving values at all, independent of whether
+    // anything crossed the step threshold.
+    Serial.printf("accel magnitude=%.3fg\n", pedoLastMagnitude());
+    Serial.println("DONE");
   } else if (line.startsWith("IV ")) {
     // IV <fue> <def> <vel> <vit>: fija los valores individuales (pruebas).
     // Con "IV 31 31 31 31" se ve el techo; con "IV 8 8 8 8" el suelo.
@@ -1552,6 +1604,11 @@ void onSwipeV(int dir) {
   if (clockOpen) { if (back) clockOpen = false; return; }
 
   if (exploreOpen) { if (back) uiTileGo(TILE_PET); return; }
+  if (martOpen) {
+    if (martConfirmItem) { if (back) martConfirmItem = ITEM_NONE; return; }
+    if (back) uiTileGo(TILE_PET);
+    return;
+  }
 
   // The two multi-region tiles are two levels deep: chooser, then ladder/grid.
   // DOWN walks back out of them one step at a time; UP keeps the region
@@ -1949,7 +2006,7 @@ void onSwipe(int dir) {
     if (galleryDetail) { galleryDetail = 0; galleryPmd.unload(); galleryDirty = true; return; }
     if (partyDetail) { partyDetail = 0; return; }
     if (partyPick) { partyPick = false; pet.clearEnded(); }
-    if (pet.ceremony || confirmUntil) return;
+    if (pet.ceremony || confirmUntil || martConfirmItem) return;
     int n = t - dir;   // the content follows the finger
     // IT BUMPS. This is the whole point of the axis: a horizontal swipe can no
     // longer close anything, so it cannot be confused with paging.
@@ -2016,6 +2073,10 @@ void onTap(int16_t x, int16_t y) {
       exploreOpen = false;
       sfxPlay(SFX_TAP);
     }
+    return;
+  }
+  if (martOpen) {
+    martTap(x, y);
     return;
   }
   if (bagOpen) {
@@ -2500,6 +2561,7 @@ uint8_t uiCurrentScreen() {
   if (pickOpen) return SCR_PICK;
   if (lanOpen) return SCR_LAN;
   if (exploreOpen) return SCR_EXPLORE;
+  if (martOpen) return SCR_MART;
   if (gymOpen) return gymPick ? SCR_GYMPICK : SCR_GYM;
   if (pet.hasLearnOffer()) return SCR_LEARN;
   if (gameOpen || sackOpen || spdOpen) return SCR_GAME;
@@ -2531,13 +2593,15 @@ uint8_t uiCurrentScreen() {
 // and Pokedex tiles until a region is picked. One table, so uiTileIndex() and
 // uiTileGo() cannot end up with different ideas of what is on the axis.
 //
-// PLAYER . PARTY . [PET] . EXPLORE . GYM . DEX -- yours on the left, the world
-// on the right. Exploration is a primary loop, not a gym action, so it gets the
-// first world-facing stop and the main screen can name it directly.
+// PLAYER . PARTY . [PET] . EXPLORE . MART . GYM . DEX -- yours on the left, the
+// world on the right. Exploration is a primary loop, not a gym action, so it
+// gets the first world-facing stop and the main screen can name it directly.
+// The Mart sits right after it: walk to earn (EXPLORE's own encounters cost
+// nothing to reach), spend at the Mart, then prove the gear at the gym.
 struct TileDef { uint8_t scr, alt; };
 static const TileDef TILE[TILE_COUNT] = {
   { SCR_PLAYER, SCR_PLAYER }, { SCR_PARTY, SCR_PARTY }, { SCR_MAIN, SCR_MAIN },
-  { SCR_EXPLORE, SCR_EXPLORE }, { SCR_GYM, SCR_GYMPICK },
+  { SCR_EXPLORE, SCR_EXPLORE }, { SCR_MART, SCR_MART }, { SCR_GYM, SCR_GYMPICK },
   { SCR_GALLERY, SCR_DEXPICK },
 };
 
@@ -2557,12 +2621,15 @@ void uiTileGo(int i) {
   boxOpen = false;
   boxDetail = partyDetail = 0;
   galleryDetail = 0;
+  martOpen = false;
+  martConfirmItem = ITEM_NONE;
   switch (TILE[i].scr) {
     // The two multi-region screens land on their CHOOSER, never on whichever
     // region was last set. Opening straight into it is how Johto and Hoenn came
     // to be built, reachable, and completely invisible.
     case SCR_GYM: gymOpen = true; gymPick = true; gymPage = 0; rpickPage = 0; break;
     case SCR_EXPLORE: exploreOpen = true; break;
+    case SCR_MART: martOpen = true; martPage = 0; break;
     case SCR_PARTY: partyOpen = true; break;
     case SCR_GALLERY:
       galleryOpen = true; galleryPick = true; galleryPage = 0; rpickPage = 0;
@@ -2589,6 +2656,7 @@ static uint8_t *uiRimTarget(uint8_t *pages) {
     case SCR_PLAYER:  p = &playerPage;  n = PLAYER_PAGES; break;
     case SCR_BOX:     p = &boxPage;     n = BOX_SLOTS / BOX_PER_PAGE; break;
     case SCR_BAGSCR:  p = &bagPage;     n = bagPages(); break;
+    case SCR_MART:    p = &martPage;    n = martPages(); break;
     case SCR_CARD:    p = &cardPage;    n = CARD_PAGES; break;
     case SCR_MOVEPICK: {
       uint8_t all[64];
@@ -2692,8 +2760,19 @@ void uiDrawRimBar() {
   int thumb = span / n;
   if (thumb < 9) thumb = 9;
   int a0 = RIM_BAR_A0 + (span - thumb) * (int)p / (int)(n - 1);
-  uiArc(CX, CY, RIM_BAR_R, RIM_BAR_A0, RIM_BAR_A1, 7, UI_TRACK);
-  uiArc(CX, CY, RIM_BAR_R, a0, a0 + thumb, 7, uiChromeInk());
+  // Every other paged screen (GYM, GALLERY, BOX, BAG, PLAYER) keeps the
+  // existing day-only UI_TRACK/uiChromeInk() bar -- untouched here on purpose.
+  // The Mart is the one screen whose rim bar sits directly on the night scene
+  // rather than assuming day, so it is the one that actually needs the
+  // palette's UI_SCROLL_DAY/NIGHT pair -- already contrast-tested in
+  // palette_test for exactly this track/thumb pairing, just never wired up.
+  uint16_t track = UI_TRACK, thumbInk = uiChromeInk();
+  if (uiCurrentScreen() == SCR_MART) {
+    track = gNight ? UI_SCROLL_NIGHT : UI_SCROLL_DAY;
+    thumbInk = gNight ? UI_INK_NIGHT : UI_INK;
+  }
+  uiArc(CX, CY, RIM_BAR_R, RIM_BAR_A0, RIM_BAR_A1, 7, track);
+  uiArc(CX, CY, RIM_BAR_R, a0, a0 + thumb, 7, thumbInk);
 }
 
 // Called by every renderer that is on the axis or pages, immediately before it
@@ -2890,6 +2969,10 @@ void render() {
   }
   if (exploreOpen) {
     renderExplore();
+    return;
+  }
+  if (martOpen) {
+    renderMart();
     return;
   }
   if (gymOpen) {
@@ -6359,6 +6442,139 @@ void bagTap(int16_t x, int16_t y) {
     return;
   }
   bagOpen = false;   // anywhere else closes, like every other list screen
+}
+
+// ---------- the Poke Mart ----------
+//
+// 1 pedometer step = $1 (Pet::addSteps()), spent here on the real games' own
+// Poke Mart prices (see items.h). The catalogue is DERIVED from itemEntry().price
+// rather than a second list kept here -- the same reasoning as the bag's
+// weighted drop table, so a future item only needs a price to appear.
+
+uint8_t martPages() {
+  uint8_t n = martSellableCount();
+  return n ? (uint8_t)((n + MART_PER_PAGE - 1) / MART_PER_PAGE) : 1;
+}
+
+void renderMart() {
+  int h = sceneHour();
+  gNight = pet.sleeping || h < 6 || h >= 20;
+  drawScene(pet.isEgg() ? 0 : DEX_TBL[pet.speciesId].biome, millis(), gNight);
+
+  gfx->fillRoundRect(78, 28, 310, 54, 14, UI_BG_DAY);
+  gfx->drawRoundRect(78, 28, 310, 54, 14, UI_INK);
+  gfx->setTextColor(UI_INK);
+  gfx->setTextSize(3);
+  gfx->setCursor(CX - (int)strlen(T(S_MART)) * 9, 44);
+  gfx->print(T(S_MART));
+
+  // Wallet is bold (size 4) and, unlike the title, sits directly on the night
+  // scene rather than a light pill -- inkColor() is what the main screen's own
+  // text uses to stay legible after dark, and these three lines need the same
+  // switch since nothing behind them does it for them.
+  uint16_t ink = inkColor();
+  char wl[24];
+  snprintf(wl, sizeof(wl), T(S_WALLET_FMT), (unsigned long)pet.wallet);
+  gfx->setTextColor(ink);
+  gfx->setTextSize(4);
+  gfx->setCursor(CX - (int)strlen(wl) * 12, 116);
+  gfx->print(wl);
+
+  gfx->setTextSize(2);
+  gfx->setTextColor(ink);
+  gfx->setCursor(CX - (int)strlen(T(S_MART_RATE)) * 6, 156);
+  gfx->print(T(S_MART_RATE));
+  char sv[64];
+  snprintf(sv, sizeof(sv), T(S_MART_STEPS_FMT), (unsigned long)pet.stepsTotal);
+  gfx->setCursor(CX - (int)strlen(sv) * 6, 176);
+  gfx->print(sv);
+
+  uint8_t n = martSellableCount();
+  uint8_t pages = martPages();
+  if (martPage >= pages) martPage = 0;
+  for (uint8_t i = 0; i < MART_PER_PAGE; i++) {
+    uint8_t idx = (uint8_t)(martPage * MART_PER_PAGE + i);
+    if (idx >= n) break;
+    ItemKey k = martKeyAt(idx);
+    uint16_t price = itemEntry(k).price;
+    bool afford = pet.wallet >= price;
+    int y = MART_ROW_Y(i);
+    // Green when affordable, matching Settings' SND ON pill (UI_BAR_OK /
+    // UI_BG_DAY); grey/dimmed otherwise, matching the bag's unusable rows.
+    gfx->fillRoundRect(76, y, 314, 50, 10, afford ? UI_BAR_OK : UI_TRACK);
+    gfx->drawRoundRect(76, y, 314, 50, 10, UI_INK);
+    gfx->setTextColor(afford ? UI_BG_DAY : 0x8410);
+    gfx->setTextSize(2);
+    gfx->setCursor(92, y + 17);
+    gfx->print(itemEntry(k).name);
+    char pr[10];
+    snprintf(pr, sizeof(pr), "$%u", price);
+    gfx->setCursor(374 - (int)strlen(pr) * 12, y + 17);
+    gfx->print(pr);
+  }
+  if (pages > 1) {
+    char pg[12];
+    snprintf(pg, sizeof(pg), "%u/%u", martPage + 1, pages);
+    gfx->setTextColor(ink);
+    gfx->setTextSize(2);
+    gfx->setCursor(CX - (int)strlen(pg) * 6, 386);
+    gfx->print(pg);
+  }
+  gfx->setTextColor(ink);
+  gfx->setTextSize(2);
+  gfx->setCursor(CX - (int)strlen(T(S_BACK)) * 6, 414);
+  gfx->print(T(S_BACK));
+
+  // Asked before it happens -- what the choice costs is on screen before the
+  // tap, same rule as the release/retire dialogs.
+  if (martConfirmItem) {
+    char q[40];
+    snprintf(q, sizeof(q), T(S_MART_BUY_Q), itemEntry(martConfirmItem).name);
+    char cost[24];
+    snprintf(cost, sizeof(cost), T(S_MART_PRICE_FMT),
+             (unsigned long)itemEntry(martConfirmItem).price);
+    drawConfirmPanel(q, cost, nullptr, UI_INK_SOFT,
+                     T(S_YES), UI_BAR_OK, UI_WHITE, T(S_NO), UI_TRACK, UI_INK);
+  }
+  uiChrome();
+  gfx->flush();
+}
+
+void martTap(int16_t x, int16_t y) {
+  if (martConfirmItem) {
+    int b1Top, b1Bot, b2Top, b2Bot;
+    uiConfirmRects(&b1Top, &b1Bot, &b2Top, &b2Bot);
+    bool inX = (x >= CONFIRM_BTN_X && x <= CONFIRM_BTN_X + CONFIRM_BTN_W);
+    if (inX && y >= b1Top && y <= b1Bot) {           // YES
+      if (pet.spendWallet(itemEntry(martConfirmItem).price)) {
+        bag.add(martConfirmItem);
+        sfxPlay(SFX_TAP);
+      } else {
+        sfxPlay(SFX_DENY);   // the wallet moved between the tap and the confirm
+      }
+      martConfirmItem = ITEM_NONE;
+    } else if (inX && y >= b2Top && y <= b2Bot) {     // NO
+      martConfirmItem = ITEM_NONE;
+    }
+    return;
+  }
+  uint8_t n = martSellableCount();
+  for (uint8_t i = 0; i < MART_PER_PAGE; i++) {
+    uint8_t idx = (uint8_t)(martPage * MART_PER_PAGE + i);
+    if (idx >= n) break;
+    int ry = MART_ROW_Y(i);
+    if (x < 76 || x > 390 || y < ry || y > ry + 50) continue;
+    ItemKey k = martKeyAt(idx);
+    if (pet.wallet < itemEntry(k).price) { sfxPlay(SFX_DENY); return; }
+    martConfirmItem = k;
+    sfxPlay(SFX_TAP);
+    return;
+  }
+  // Anywhere else, including the "tap: back" label, returns to the pet --
+  // same affordance the bag screen's own "anywhere else closes" gives, just
+  // going to the pet tile instead of closing a modal since the Mart is on
+  // the tile axis.
+  uiTileGo(TILE_PET);
 }
 
 // ---------- wild encounters ----------

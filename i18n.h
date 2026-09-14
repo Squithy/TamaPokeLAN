@@ -159,6 +159,13 @@ enum StrId : uint8_t {
   // writes both and the render code picks by count == 1.
   S_LAN_DEFEATED_1, S_LAN_DEFEATED_N,
   S_LAN_LOST_1, S_LAN_LOST_N,
+  // the Poke Mart
+  S_MART,           // screen title
+  S_MART_RATE,      // the exchange rate, e.g. "1 pedometer step = $1"
+  S_MART_STEPS_FMT, // "your lifetime step count: %lu"
+  S_WALLET_FMT,     // "Wallet: $%lu"
+  S_MART_BUY_Q,     // buy confirm: "Buy %s?"
+  S_MART_PRICE_FMT, // buy confirm sub-line: "COST: $%lu"
   STR_COUNT
 };
 

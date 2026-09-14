@@ -302,7 +302,10 @@ static bool readPetCore(Preferences &prefs, const char *key,
 // however big the table got -- applied inside one atomic blob instead of across
 // twenty-five separate writes.
 static constexpr uint32_t PLAYER_MAGIC = 0x31594B54UL;   // "TKY1"
-static constexpr uint16_t PLAYER_VERSION = 1;
+// v2 appended the wallet + lifetime step count (the Poke Mart) after the
+// variable tail. v1 records still read -- the tail is simply shorter, which is
+// exactly "no money yet", the right default.
+static constexpr uint16_t PLAYER_VERSION = 2;
 static constexpr size_t PLAYER_FIXED = 42;   // header + every scalar, before the arrays
 static constexpr size_t PLAYER_CAP = 512;
 static constexpr size_t PLAYER_DEX_BYTES = (DEX_COUNT + 7) / 8;
@@ -311,7 +314,7 @@ static constexpr size_t PLAYER_DEX_BYTES = (DEX_COUNT + 7) / 8;
 // the signal to raise PLAYER_CAP, not to trim the record.
 static constexpr size_t PLAYER_MAX =
     PLAYER_FIXED + 2 * PLAYER_DEX_BYTES + 4 * (GYM_REGIONS - 1) +
-    2 * REGION_COUNT + 12 /* trainerName */ + CKPT_CRC;
+    2 * REGION_COUNT + 12 /* trainerName */ + 8 /* wallet + stepsTotal */ + CKPT_CRC;
 static_assert(PLAYER_MAX <= PLAYER_CAP, "raise PLAYER_CAP for the player record");
 
 // A bounds-checked cursor over the variable tail of a blob. Overrunning sets
@@ -390,6 +393,12 @@ bool Pet::savePlayerSnapshot() {
   cur.put(badgesHardX, sizeof(badgesHardX));
   cur.put(eggByRegion, sizeof(eggByRegion));
   cur.put(trainerName, sizeof(trainerName));
+  // v2 tail: append-only, after the variable arrays rather than growing
+  // PLAYER_FIXED -- growing PLAYER_FIXED would shift where every array above
+  // starts reading FROM, which is an insert wearing an append's name. See the
+  // append-only rule at the top of this section.
+  cur.put(&wallet, sizeof(wallet));
+  cur.put(&stepsTotal, sizeof(stepsTotal));
   if (cur.bad) {   // PLAYER_MAX static_asserts this cannot happen; say so if it does
     Serial.println("save: player record does not fit PLAYER_CAP");
     return false;
@@ -467,6 +476,15 @@ bool Pet::loadPlayerSnapshot() {
   cur.take(eggByRegion, sizeof(eggByRegion), regionN * 2);
   cur.take(trainerName, sizeof(trainerName), nameN);
   trainerName[sizeof(trainerName) - 1] = 0;
+
+  // v2 tail: wallet + lifetime steps, appended after the variable arrays. A v1
+  // record simply ends at `need` -- optional, and absent means "no money yet",
+  // which is exactly what wallet/stepsTotal's own initialisers already are.
+  if (body >= need + 8) {
+    wallet = ckptRd32(buf + need);
+    if (wallet > WALLET_CAP) wallet = WALLET_CAP;   // in case a later build lowers the cap
+    stepsTotal = ckptRd32(buf + need + 4);
+  }
 
   // REGION_ALL is the LAST entry of the table and is stored RAW, so a save from
   // a build with fewer regions has a number that now means somebody else --
@@ -2086,6 +2104,8 @@ bool Pet::save() {
   SAVE_KEY(prefs.putUShort("ghi", gameHi), "ghi");
   SAVE_KEY(prefs.putUShort("shi", strHi), "shi");
   SAVE_KEY(prefs.putUShort("qhi", spdHi), "qhi");
+  SAVE_KEY(prefs.putUInt("wlt", wallet), "wlt");
+  SAVE_KEY(prefs.putUInt("stps", stepsTotal), "stps");
   SAVE_STR_KEY(prefs.putString("nick", nick), "nick", nick);
 #undef SAVE_KEY
 #undef SAVE_STR_KEY
@@ -2156,6 +2176,9 @@ void Pet::load() {
   gameHi = prefs.getUShort("ghi", 0);
   strHi = prefs.getUShort("shi", 0);
   spdHi = prefs.getUShort("qhi", 0);
+  wallet = prefs.getUInt("wlt", 0);
+  if (wallet > WALLET_CAP) wallet = WALLET_CAP;
+  stepsTotal = prefs.getUInt("stps", 0);
   prefs.getString("nick", nick, sizeof(nick));
   // Moves load last: relearnFromLevel() needs speciesId and ageMinutes, both of
   // which are read above. A save from before moves existed has no "mvs" key and

@@ -28,8 +28,10 @@ extern Pet pet;
 extern bool cardOpen, galleryOpen, clockOpen, kbOpen, menuOpen, partyOpen, partyPick;
 extern bool trainOpen, movePickOpen, battleOpen, gymOpen, playerOpen, boxOpen, pickOpen;
 extern bool exploreOpen;
+extern bool martOpen;
 extern bool btlWild;
 extern uint8_t cardPage, gymPage, playerPage, movePickPage, boxPage, pickPage, partyDetail;
+extern uint8_t martPage;
 extern uint8_t galleryPage; extern bool galleryDirty; extern uint8_t galleryDetail;
 extern uint8_t galleryRegion;
 extern uint8_t gymRegion;
@@ -57,6 +59,7 @@ static void clearAll(){
   cardOpen=galleryOpen=clockOpen=kbOpen=menuOpen=partyOpen=partyPick=false;
   trainOpen=movePickOpen=battleOpen=gymOpen=playerOpen=boxOpen=pickOpen=false;
   exploreOpen=false;
+  martOpen=false;
   bagOpen=false;
   partyDetail=0; boxSel=boxSwapFrom=0;
 }
@@ -104,6 +107,9 @@ int main(){
   clearAll();
   for (ItemKey k=1;k<ITEM_COUNT;k++) bag.add(k, 1);
   bagOpen=true;                                   check("bag",      &bagOpen,      &bagPage);
+  // The Mart's catalogue is the static item table, not the bag -- always the
+  // same length regardless of what is carried, so no seeding is needed.
+  clearAll(); martOpen=true;                      check("mart",     &martOpen,     &martPage);
   // The Pokedex pages within ONE region and changes region on a vertical swipe.
   // Every species must be reachable: it was capped at 10 flat pages when the dex
   // was 151 long, which silently hid everything past 160 once it grew to 386.
@@ -226,7 +232,8 @@ int main(){
     } else printf("PASS  %-10s starts a wild battle from its primary action\n", "explore");
     clearAll();
     onSwipe(-1);
-    onSwipe(-1);                       // Gyms follows Explore
+    onSwipe(-1);
+    onSwipe(-1);                       // Gyms follows Explore, Mart
     if (!gymOpen || !gymPick) { printf("FAIL  gyms       does not open on the region chooser\n"); bad++; }
     else printf("PASS  %-10s opens on the region chooser\n", "gyms");
     // and a swipe DOWN out of a ladder returns to it -- one step of depth, not
