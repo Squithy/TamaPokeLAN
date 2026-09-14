@@ -1,4 +1,4 @@
-import { verifyBackup, describeBackup, sendBackup } from './savefile.js?v=1e0c9406aa8d98ea';
+import { verifyBackup, describeBackup, sendBackup } from './savefile.js?v=122683f213e38dbd';
 
 const byId = (id) => document.getElementById(id);
 const enc = new TextEncoder();
