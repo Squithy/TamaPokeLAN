@@ -74,8 +74,8 @@ hardware draws.
 A new game asks which region you are playing before it asks which creature you
 want. The choice sets both: you pick from that region's three starters, and it
 becomes where your eggs come from afterwards (changeable later on the egg's
-region pill). Existing saves never see this screen -- it only appears when the
-Pokedex is empty.
+region pill). Existing saves never see this screen — it only appears when the
+Pokédex is empty.
 
 ### Raising one
 
@@ -107,7 +107,7 @@ plays throughout.
 Kanto, Johto, Hoenn, Sinnoh, Unova, Kalos and Alola each have eight leaders, an
 Elite 4 and a champion, on easy and hard. Four of the seven are the games' own
 teams, checked against the pokecrystal, pokeemerald and pokeplatinum
-disassemblies -- **0 differences across all 39 verified trainers**, re-checkable
+disassemblies — **0 differences across all 39 verified trainers**, re-checkable
 with `tools/verify_rosters.py`.
 
 **Unova, Kalos and Alola are the exceptions, and say so.** pret's work stops at
@@ -393,6 +393,15 @@ A caught creature takes a party slot, then a box slot, then asks — the same pa
 farewell already uses. It is **not** added to the Pokédex on capture: registration
 means "you raised this", so it happens when you actually make it the one you raise.
 
+### LAN battles
+
+Pair two boards over ESP-NOW from the gym ladder's **LAN BATTLE** button — one
+hosts, one joins. Bring whichever team you like: unlike the gym ladders there
+is no level or team-size cap, since you already know what your opponent is
+bringing. A running **head-to-head record** is kept against each rival —
+keyed by their device, not their typed name, so renaming doesn't reset the
+score — and shown on the pairing screen the next time you two fight.
+
 ### Bonds, streaks, medals, Pokédex
 - **Streak** (player-wide, survives across pets): first care each real day; milestones
   at **3 / 7 / 30 / 100** days; skipping a day breaks it.
@@ -503,15 +512,6 @@ training rather than rolling their own — special attack runs off the ATK IV an
 training, special defence off the DEF IV and training. So the physical/special
 split lives on the species, not the individual — no extra IVs to roll.
 
-### LAN battles
-
-Pair two boards over ESP-NOW from the gym ladder's **LAN BATTLE** button — one
-hosts, one joins. Bring whichever team you like: unlike the gym ladders there
-is no level or team-size cap, since you already know what your opponent is
-bringing. A running **head-to-head record** is kept against each rival —
-keyed by their device, not their typed name, so renaming doesn't reset the
-score — and shown on the pairing screen the next time you two fight.
-
 ### Retiring a creature early
 
 **RETIRE** on the menu ends a creature whenever you like — what it costs
@@ -537,7 +537,7 @@ region moves the egg you are holding. Two rules stop that being a re-roll button
 | Memory | each region's answer is **remembered** for the current egg, so switching back shows the same creature |
 
 The region is first chosen at the **very start of a new game**, on the screen
-before the starter -- so the creature you begin with and the eggs that follow
+before the starter — so the creature you begin with and the eggs that follow
 come from the same place. Everything below is about changing it afterwards.
 
 A region is decided by the **base** species, and evolutions follow wherever they
