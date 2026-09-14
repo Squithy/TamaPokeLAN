@@ -222,12 +222,10 @@ While **awake**, per minute:
 
 ### Starting out: region and starter
 
-The very first screen asks which region you're playing — one of the seven with
-a full gym ladder (Kanto, Johto, Hoenn, Sinnoh, Unova, Kalos, Alola) — before
-it asks which of that region's three starters you want. Both choices stick:
-it's where your eggs come from afterwards (changeable later from the egg's
-region pill, see "Choosing your egg's region" below), and it's the one screen
-an existing save never sees again.
+The seven regions with a full gym ladder — Kanto, Johto, Hoenn, Sinnoh, Unova,
+Kalos, Alola — are what the very first screen (see "Starting out" in Screens
+above) offers before it asks for a starter. See "Choosing your egg's region"
+below for what changing it later does and doesn't affect.
 
 ### Eggs & who you get (spawn odds)
 - Hatch the egg: tap it **3×** (or wait — it hatches on its own).
