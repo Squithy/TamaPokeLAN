@@ -155,6 +155,11 @@ bool pwrShortPressed() { return false; }
 bool pwrLongPressed() { return false; }
 bool batLowWarning() { return false; }
 
+// --- pedometer (no IMU here; STEPS on the serial console is the test path) ---
+bool pedoBegin() { return false; }
+uint32_t pedoPollSteps() { return 0; }
+float pedoLastMagnitude() { return 0.0f; }
+
 // --- NVS headroom (nvsinfo.cpp on the board) ---
 // nvsEntryStats() itself is in nvsinfo_stub.cpp now, not here -- pet.cpp
 // calls it directly (see logCkptFailure()), so plain CORE-only test binaries
