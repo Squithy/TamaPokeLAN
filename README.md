@@ -159,6 +159,24 @@ Pokédollars at 1:1 — see § Game manual below for the wallet cap and price li
 
 A quick reference to how the game really works (values straight from the code).
 
+### Controls
+
+The round panel has no corners to anchor a back button, so touch gestures carry
+the navigation — three axes, one meaning each, everywhere:
+
+| Gesture | Means |
+|---|---|
+| **Horizontal swipe** | move along the **tile axis**: `PLAYER · PARTY · [PET] · EXPLORE · MART · GYM · POKÉDEX`. It **bumps** at both ends and never closes anything. |
+| **Swipe up** | go **deeper** — from the pet, its stat card |
+| **Swipe down** | go **back**, one level, from anywhere |
+| **Drag the rim** | **page** whatever is in front of you (the arc scrollbar at 2–5 o'clock) |
+
+- **Tap the name** at the top opens the **menu** (Pokédex / Bag / Settings).
+- **Tap the creature** to pet it. **Long press (3 s)** opens the **release**
+  dialog — gated to the main screen only, so it can never fire on a party slot.
+- **Physical PWR button:** short press = screen on/off · long press (4 s) =
+  full power-off (the RTC keeps running, so time still passes while it's off).
+
 ### Time & leveling
 - **1 real minute = 1 in-game minute.** Your Pokémon gains **+1 level every hour**
   of real time. Leveling is purely time-based — caring well doesn't speed it up,
@@ -381,6 +399,8 @@ means "you raised this", so it happens when you actually make it the one you rai
   together", re-offered in a day). The good ending.
 - 💔 **Run-away** — if you let **all four stats sit at 0 for a full hour**. A single
   act of care cancels it. It **curses the next egg** (forces Common). The sad ending.
+  **It does not ask for confirmation, deliberately** — a creature you had to
+  authorise to leave would not really be at stake.
 - 👋 **Release** — long-press the creature to let it go on your terms (neutral).
 
 After any ending, a **new egg** appears.
@@ -395,6 +415,11 @@ After any ending, a **new egg** appears.
 - **Pokédex:** raising a species registers it; **809 + shinies** to complete.
   Browsed **one region at a time** — swipe vertically between regions,
   horizontally to page within it, so nothing is more than ten pages from the front.
+- **Name:** tap the header to open the touch keyboard; the nickname replaces the
+  species name there and on the stat card.
+- **Languages:** the UI ships in 6 — English (default), Spanish, French, German,
+  Italian, Portuguese — switchable from Settings. Move names and battle
+  narration follow whichever is chosen.
 - **Region:** the pill under a waiting egg picks which generation it comes from —
   **Kanto / Johto / Hoenn / Sinnoh / Unova / Kalos / Alola / All**. A first egg gives that
   region's starter. A handful of species have no sprite art anywhere (13 of
@@ -455,6 +480,19 @@ quietly leaning on TMs to fill the gap.
 **Gym wins train too**, which is what makes the ladder worth replaying rather than
 a checklist you tick once:
 
+| | Training a win is worth |
+|---|---|
+| Easy | **3–5** points, **+1 per 3 leaders** deeper into the ladder |
+| Hard | **6–10** points, same ladder bonus |
+| Which stat | **random**, but only among stats **not already at their ceiling** |
+| Who gets it | the **live pet**, and only if it was in the squad |
+
+A random stat that landed on a maxed one would silently evaporate, so it never
+picks one; and the IV-bound ceiling above still applies, so a win can never push a
+stat past what its IV allows. Banked members are frozen at what they were banked
+with, and battling already costs the live pet energy — that, not a cooldown, is
+what rate-limits rematching. A fully trained creature is told so.
+
 ### Retiring a creature early
 
 The farewell is only *offered* at final form and three days. **RETIRE** on the
@@ -495,19 +533,6 @@ come from the same place. Everything below is about changing it afterwards.
 
 A region is decided by the **base** species, and evolutions follow wherever they
 lead — a Kanto run still reaches Crobat and Blissey.
-
-| | Training a win is worth |
-|---|---|
-| Easy | **3–5** points, **+1 per 3 leaders** deeper into the ladder |
-| Hard | **6–10** points, same ladder bonus |
-| Which stat | **random**, but only among stats **not already at their ceiling** |
-| Who gets it | the **live pet**, and only if it was in the squad |
-
-A random stat that landed on a maxed one would silently evaporate, so it never
-picks one; and the IV-bound ceiling above still applies, so a win can never push a
-stat past what its IV allows. Banked members are frozen at what they were banked
-with, and battling already costs the live pet energy — that, not a cooldown, is
-what rate-limits rematching. A fully trained creature is told so.
 
 ## Hardware
 
@@ -597,88 +622,6 @@ Then load it from the web installer's **"Load sprites"** button (or `send_sd.py`
 above). `pack_pmd.py` also takes individual dex numbers, e.g. `pack_pmd.py 7 25`.
 (~40 MB total, all PMD. Versioned under `tools/sdcard/`.)
 
-## How to play
-
-On first run you **choose a starter** (Bulbasaur / Charmander / Squirtle). After
-that you start with an **egg**. Tap it 3 times or wait and it hatches. From then
-on, care for your companion:
-
-**Four stats** that decay: **FOOD**, **JOY**, **ENE** (energy), **HYG** (hygiene).
-If one bottoms out it counts as a *slip-up*.
-
-**Buttons (bottom arc, icons):**
-- 🍎 **Feed** → food menu: 3 berries (each species has a hidden favourite that
-  gives a bonus) and a candy (+happiness but it fattens; weight makes it sluggish).
-- ⚽ **Play** → the pokeball minigame (joy only).
-- 🌙 **Light** → sleep/wake (recovers energy, dims the screen). While asleep,
-  needs decay much slower (rest).
-- 🫧 **Bath** → a foam scene that cleans up the poops.
-
-**Touch gestures — three axes, one meaning each.** The round panel has no
-corners to anchor a back button, so the gestures carry the navigation, and each
-direction means exactly one thing everywhere:
-
-| Gesture | Means |
-|---|---|
-| **Horizontal swipe** | move along the **tile axis**: `PLAYER · PARTY · [PET] · EXPLORE · GYM · POKÉDEX`. It **bumps** at both ends and never closes anything. The six dots show position; the pet screen also names the neighboring `PARTY` and `EXPLORE` destinations. |
-| **Swipe up** | go **deeper** — from the pet, its stat card (4 pages) |
-| **Swipe down** | go **back**, one level, from anywhere |
-| **Drag the rim** | **page** whatever is in front of you. The arc at 2–5 o'clock is the scrollbar; it shows position *and* extent, which a row of dots cannot. |
-
-Paging used to live on the horizontal swipe, which meant "next page" on some
-screens and "exit" on others — the same bug shipped four separate times. Moving
-it to the rim is what frees the horizontal axis to mean one thing.
-
-- **Tap the name** at the top = the **menu** (Pokédex / Bag / Settings). Close it
-  with the CLOSE row, by tapping anywhere outside the panel, or with any swipe.
-- Tap the creature = pet it (+happiness, bond).
-- Long press (3 s) on the creature = **release** dialog. Gated to the main
-  screen only, so it can never fire on a party slot.
-
-The four care stats are **arcs on the rim** rather than bars: colour is severity,
-exactly as the bars were, and the label says which stat. That is what freed the
-bottom of the panel for home icons a finger can actually hit — they went from
-60 px (5.7 mm) to 80 px (7.6 mm), and `hit_test` now holds every new control to
-`UI_TAP_FINGER` (94 px = 9 mm) rather than the old `UI_TAP_MIN` of 44, which was
-44 *points* borrowed as pixels.
-
-**Physical PWR button:** short = screen on/off · long (4 s) = full power-off
-(the RTC stays alive, so time passes even while it's off).
-
-## Decisions: you choose, and you watch
-
-The three life-cycle endings and evolution **don't happen on their own** — when
-the conditions are met a button appears and you tap it (so you're present to
-witness it), each opening a two-option dialog:
-
-- **Evolution** (red button): *Evolve* (epic animation: halo, rays, sparkles and
-  a **flicker between the old and new form**) or *Keep form* (re-offered next level).
-- **Farewell** (gold button, final form + 3 days): *Say goodbye* (warm farewell,
-  rising hearts → new egg) or *Stay together* (keep your companion; re-offered in
-  a day). Tension: a maxed-out friend vs. completing the Pokédex.
-- **Runaway** (dark button, total neglect for 1 h): a somber "feels abandoned"
-  ending in the rain — caring for the creature cancels it.
-
-  **It does not ask, and that is the point** -- a creature you have to authorise
-  to leave is not really at stake. What it must never be is the price of going
-  to bed, so **the screen being off between midnight and 06:00 puts the creature to
-  sleep**, and sleep floors the stats at FOOD 30 / JOY 35 / HYG 45 with the
-  neglect check skipped entirely. A night costs you a hungry, grubby creature at
-  breakfast instead of an empty one.
-
-  **Both halves are needed.** The screen alone would pause the game every time
-  you pocketed the device, and the creature is meant to get hungry during the
-  day. The hour alone would send it to bed while you were still playing. Set the
-  clock in **SETTINGS** (or `RTCSET`); a board whose clock was never set simply
-  never auto-sleeps, which fails safe -- it keeps draining and the light button
-  still works by hand.
-
-  This was a real loss: a player left the board running overnight and came back
-  to a Dratini that had gone. The live tick was the only drain path with no
-  floor -- offline floors at 15, sleep at 30/35/45 -- so a board left *running*
-  was punished where a board switched *off* was not. `night_test` runs ten
-  simulated hours and fails if that ever comes back.
-
 ## Sprites: PMD SpriteCollab everywhere
 
 - **PMD SpriteCollab** (everything — main screen, stat card, minigame **and the
@@ -729,7 +672,7 @@ Seven of the original 151 differ from their Gen 1 typing: Magnemite and Magneton
 (Gen 2), and Clefairy, Clefable, Jigglypuff, Wigglytuff and Mr. Mime gained Fairy
 (Gen 6) — the first two losing Normal entirely.
 
-Typing is shown on the Battle page of the stat card. *(Battles: on the roadmap.)*
+Typing is shown on the Battle page of the stat card.
 
 ## Battle stats and training
 
@@ -775,36 +718,6 @@ See [Battle stats & IVs](#battle-stats--ivs) for the numbers.
 
 Shown on the Battle page of the stat card. The (hidden) weight goes up with candy
 and burns off with training.
-
-## Retention: streak, bond, medals, name
-
-- **Streak** (the player's, persists across creatures): the first care of each
-  real day advances the streak; 3/7/30/100 milestones are celebrated; skipping a
-  day breaks it. Flame badge on the main screen.
-- **Bond** (the creature's): rises slowly with care and petting, drops with slip-ups.
-- **Medals** for the individual (level, berry, streak, bond, final form, fit) +
-  a global counter. Medals page of the stat card.
-- **Name**: touch keyboard; the nickname rules the header and the card.
-
-High streak and bond **improve the egg roll** (rarity and shiny): caring well
-always pays off.
-
-## Life cycle, eggs by rarity, languages
-
-The life cycle lasts **3 days** of play. Three endings (all leave a new egg):
-**farewell** (final form + 3 days), **release** (long press), **runaway** (all 4
-bars at zero for 1 h). Each bred species is recorded in the **bred Pokédex**
-(normal and shiny separately).
-
-The egg rolls rarity over the ~79 base forms (47 common / 27 rare / 5 legendary),
-**biased towards the lines you're missing** (all 1025 are completable), blessed by
-a farewell and punished by a runaway. Legendaries only with 25+ registered.
-**Shiny** 1/48 (better with streak/bond/farewell).
-
-**Languages:** the UI ships in 6 languages — English (default), Spanish, French,
-German, Italian, Portuguese — switchable from the settings screen (swipe down).
-Move names on cards, pickers and battle buttons follow that choice, as does the
-battle narration that names the move being used.
 
 ## Backgrounds: biome + real time
 
