@@ -43,9 +43,40 @@ tools/pokeapi_cache/
 # same-origin) stay in.
 tools/sdcard/mons/*.bin
 
+# A ready-to-copy mirror of the card's own root layout (mons/*.bin), generated
+# from the same committed .pak bundles above for dragging onto a physical SD
+# card with a reader instead of sending over USB. Same ~230 MB, same reason to
+# keep it out of the repo.
+/SDCARD/
+
 # Emulator save files and downloaded generator intermediates: local scratch, not
 # artefacts. They were committed by accident once.
 tamapoke.nvs
 tamapoke.nvs.*
 tools/_*.svg
 backups/
+
+# A one-off compiled firmware image for flashing by hand, not a build target
+# any script here produces or expects -- see whichever session note asked
+# for it. Same reasoning as backups/: local, and not something to commit.
+/build_output/
+
+# tools/debugger/debugger_gui.py's own session logs and trend CSVs -- one
+# pair per connect, local scratch like tamapoke.nvs and backups/ above.
+tools/debugger/serial_logs/
+
+# One-off bug-report bundles from the "Create bug report" button -- meant to
+# be shared ad hoc (e.g. pasted to Claude), not committed.
+/bugreports/
+
+# Personal backup archives of the SD card contents -- the same sprite data
+# tools/sdcard/mons/*.bin and /SDCARD/ above already deliberately exclude,
+# just re-zipped. Redundant with the committed .pak bundles.
+/SDCARD.7z
+/SDCARD.zip
+/tools/sdcard.zip
+
+# WIP port to the Waveshare ESP32-S3-Touch-AMOLED-1.43-B (smaller panel,
+# FT3168 touch) -- not wired into TamaPoke.ino yet, held back until it is.
+/pin_config_amoled143b.h
+/touch_ft3168.h
