@@ -99,7 +99,7 @@ static void sendHello(Link &l) {
   uint16_t tag = linkBuildTag();
   b[HB_BUILD] = (uint8_t)(tag & 0xFF);
   b[HB_BUILD + 1] = (uint8_t)(tag >> 8);
-  memcpy(b + HB_NAME, l.peerName, LINK_NAME_LEN);
+  memcpy(b + HB_NAME, l.myName, LINK_NAME_LEN);
   put(l, LM_HELLO, b, HB_LEN);
 }
 
@@ -121,7 +121,7 @@ static void sendSquad(Link &l, uint8_t rot = 0) {
   }
 }
 
-void Link::begin(bool host, const char *myName) {
+void Link::begin(bool host, const char *name) {
   state = LINK_LISTENING;
   isHost = host;
   protoTheirs = 0;
@@ -145,7 +145,8 @@ void Link::begin(bool host, const char *myName) {
   lastActivity = 0;
   sawActivity = false;
   peerName[0] = 0;
-  (void)myName;
+  strncpy(myName, name ? name : "", sizeof(myName) - 1);
+  myName[sizeof(myName) - 1] = 0;
 }
 
 void Link::addMon(const LinkMon &m) {

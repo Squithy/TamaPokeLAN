@@ -604,11 +604,18 @@ routed through it.
 Fixed differently rather than rebuilding that whole mechanism: `Pet::save()`
 and `Pet::switchTo()` now return `bool` (did it actually land), and
 `focusSwap()` calls `switchTo()` FIRST and only commits the party-side write
-if it succeeded. A failure leaves the party slot untouched; the outgoing pet's
-data stays in RAM and the existing `pendingSave`/retry machinery catches it up
-on the next successful save. `focus_test.cpp` has a negative check using the
-emulator's `nvsFailWritesAfter()` fault injection -- it forces the exact
-failure and asserts the party slot is NOT corrupted.
+if it succeeded. A failure leaves the party slot untouched -- but it does NOT
+leave the incoming pet live in RAM either (an earlier version of this note
+said it did; it does not, and leaving it that way would only be the same
+duplicate-creature bug pointed the other direction: incoming live in RAM
+*and* still banked in the untouched slot). After exhausting
+`FOCUS_SWAP_RETRIES`, `focusSwap()` rolls back with `switchTo(outgoing)`, so
+RAM ends up back where the on-disk checkpoint already agrees -- nothing is
+left half-done for a later save to catch up on; the swap simply did not
+happen, as if it were never tapped. `focus_test.cpp` has a negative check
+using the emulator's `nvsFailWritesAfter()` fault injection -- it forces the
+exact failure and asserts the rollback, not just that the party slot is
+uncorrupted.
 
 **2. A failing checkpoint write retried on every single loop iteration.**
 `Pet::flushSave()`'s caller in `loop()` checks `pendingSave` while dimmed/

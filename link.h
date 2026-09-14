@@ -138,7 +138,8 @@ struct Link {
   uint16_t buildTheirs = 0;
   uint16_t id = 0;             // breaks the tie when both sides offer to host
   uint16_t peerId = 0;
-  char peerName[LINK_NAME_LEN] = "";
+  char peerName[LINK_NAME_LEN] = "";   // write: onPacket() only. read: display only.
+  char myName[LINK_NAME_LEN] = "";     // write: begin() only. read: sendHello() only.
 
   LinkMon mine[TRAINER_TEAM_MAX];
   uint8_t mineN = 0;
@@ -177,7 +178,7 @@ struct Link {
   void (*send)(void *ctx, const uint8_t *buf, uint8_t len) = nullptr;
   void *ctx = nullptr;
 
-  void begin(bool host, const char *myName);
+  void begin(bool host, const char *name);
   void addMon(const LinkMon &m);
   void start();                       // announce: hello, then squad
   void onPacket(const uint8_t *buf, uint8_t len);

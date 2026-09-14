@@ -41,7 +41,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.26"
+#define FW_VERSION "3.27"
 
 Arduino_DataBus *bus = new Arduino_ESP32QSPI(
   LCD_CS, LCD_SCLK, LCD_SDIO0, LCD_SDIO1, LCD_SDIO2, LCD_SDIO3);
@@ -5017,6 +5017,11 @@ void battleTap(int16_t x, int16_t y) {
     if (btlMsgCount) return;
     if (btlOver) {
       btlFreeSprites();
+      // A wild win or catch never sets btlWinUntil (that is trainer-only, see
+      // below), so it never passes through that dismiss's own audioMusic(MUS_NONE)
+      // either -- MUS_VICTORY from the catch/win above was otherwise left running
+      // straight into the main screen and whatever came after it.
+      audioMusic(MUS_NONE);
       battleOpen = false;
       btlWild = false;
       // Back to the LAN screen rather than all the way out: that is where a
@@ -5701,7 +5706,6 @@ static void lanOffer(bool host) {
   // on whether the radio comes up -- doing it the other way round meant a
   // failed radio skipped the squad entirely and left nothing to inspect.
   lan.begin(host, pet.trainerName);
-  snprintf(lan.peerName, sizeof(lan.peerName), "%s", pet.trainerName);
   buildSquad(0, TRAINER_TEAM_MAX, squadMask);
   for (uint8_t i = 0; i < btlSquadN; i++) {
     LinkMon m;

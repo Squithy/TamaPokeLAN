@@ -134,7 +134,20 @@ int main(){
   // and switchTo() the incoming one second; this drives it with the second
   // half's save forced to fail, negative-checking the order was really fixed
   // and not just documented.
+  //
+  // A total failure (every FOCUS_SWAP_RETRIES attempt) rolls back rather than
+  // leaving the incoming pet live in RAM: switchTo(incoming)'s own save()
+  // already failed, so leaving RAM on incoming while the party slot stays
+  // un-committed would BE the same "same creature in two places" bug, just
+  // pointing the other way -- incoming live in RAM and still banked in the
+  // slot nothing ever replaced. Rolling back to outgoing keeps RAM and disk
+  // in agreement on both sides: nothing about outgoing changed during the
+  // failed attempt, so even the rollback's own save (also forced to fail
+  // here) has nothing it needs to persist to stay consistent.
   int16_t outgoingDex = pet.speciesId;
+  char outgoingNick[12];
+  strncpy(outgoingNick, pet.nick, sizeof(outgoingNick) - 1);
+  outgoingNick[sizeof(outgoingNick) - 1] = 0;
   PartyMon fresh; fresh.dex=79; fresh.level=8; fresh.ivAtk=5; fresh.ivDef=5;
   fresh.ivSpe=5; fresh.ivHp=5; fresh.stateVersion=1;
   fresh.ageMinutes=(uint32_t)7*MINUTES_PER_LEVEL;
@@ -144,19 +157,19 @@ int main(){
   nvsFailWritesAfter(0);            // every NVS write attempt fails from here
   focusSwap(1);
   nvsResumeWrites();
-  ck(pet.speciesId==79 && !strcmp(pet.nick,"SLOWP"),
-     "a failed checkpoint write still updates the live pet in RAM");
+  ck(pet.speciesId==outgoingDex && !strcmp(pet.nick,outgoingNick),
+     "a total failure rolls the live pet back to who was out before");
   ck(party.slots[1].dex==79 && !strcmp(party.slots[1].nick,"SLOWP"),
-     "but the party slot is left UNTOUCHED rather than banking a duplicate");
+     "the party slot is left UNTOUCHED rather than banking a duplicate");
   ck(party.slots[1].dex != outgoingDex,
      "so the outgoing pet is not ALSO sitting in this slot");
 
-  // Recovery: the next save, with writes working again, persists the swap
-  // that already happened in RAM -- nothing about the failure above left it
-  // permanently stuck.
+  // Recovery: nothing was left half-done for a later save to finish -- the
+  // rollback above already put RAM and disk back in agreement, so a normal
+  // save afterward just re-confirms outgoing rather than completing anything.
   pet.saveNow();
   Pet reloaded2; reloaded2.begin();
-  ck(reloaded2.speciesId==79, "and a later successful save catches it up");
+  ck(reloaded2.speciesId==outgoingDex, "and it stays that way through a reload");
 
   printf(bad?"FAILED %d\n":"OK\n", bad);
   return bad?1:0;
