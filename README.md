@@ -49,13 +49,14 @@ same gating every region has always used.
 
 **Added in this fork:**
 
-- **LAN battles are fully working now** — pair two boards over ESP-NOW and
-  battle head-to-head, with a running win/loss record kept per rival.
+- **LAN battles are fully working now** — scan for and battle another player
+  head-to-head over WiFi Direct (no router or home WiFi needed!), with
+  win/loss records kept per rival.
 - **The Poké Mart** — spend real steps, turned into Pokédollars, on balls,
   potions and vitamins between EXPLORE and the gyms.
-- **A software pedometer** drives it — the QMI8658's own onboard step
-  counter never worked reliably on this board, so steps are detected from
-  the raw accelerometer instead.
+- **A pedometer** drives it, with no extra battery draw — the QMI8658's own
+  onboard step-counting engine never worked reliably on this board, so
+  steps are detected from the same accelerometer readings instead.
 - **`tools/debugger/`** — a live serial monitor + save editor for testing
   against real hardware. Not part of the firmware itself.
 
@@ -222,13 +223,6 @@ While **awake**, per minute:
   stays asleep until you turn the screen back on — it wakes when *you* do, not
   at a fixed hour. The light button always overrides: a creature you sent to
   bed stays there regardless of the clock.
-
-### Starting out: region and starter
-
-The seven regions with a full gym ladder — Kanto, Johto, Hoenn, Sinnoh, Unova,
-Kalos, Alola — are what the very first screen (see "Starting out" in Screens
-above) offers before it asks for a starter. See "Choosing your egg's region"
-below for what changing it later does and doesn't affect.
 
 ### Eggs & who you get (spawn odds)
 
@@ -549,9 +543,9 @@ region moves the egg you are holding. Two rules stop that being a re-roll button
 | Memory | each region's answer is **remembered** for the current egg, so switching back shows the same creature |
 
 The region is first chosen at the **very start of a new game**, on the screen
-before the starter (see "Starting out: region and starter" above) — so the
-creature you begin with and the eggs that follow come from the same place.
-Everything here is about changing it afterwards.
+before the starter (see "Starting out" in Screens above) — so the creature you
+begin with and the eggs that follow come from the same place. Everything here
+is about changing it afterwards.
 
 A region is decided by the **base** species, and evolutions follow wherever they
 lead — a Kanto run still reaches Crobat and Blissey.
@@ -737,11 +731,13 @@ encounter) ·
 
 To test fast: lower `PET_TICK_MS`, `MINUTES_PER_LEVEL` and `FAREWELL_AGE_MIN` in `pet.h`.
 
-## Community forks
-
-- **[TamaPoke — Expanded](https://github.com/ShadowEnemyx/TamaPoke/tree/tamapoke-expanded-update)** by **ShadowEnemy** — a substantial community fork (different author/branch): a full **type-matchup battle system**, all **151 + shinies** with a **Pokédex / collection box** and daily goals, **6 UI languages**, **ES8311 sound**, starter choice and a one-click web installer. Worth a look. 🎮
-
 ## Credits
+
+This is a fork of [**DylanPDao/TamaPoke**](https://github.com/DylanPDao/TamaPoke)
+by **Dylan Dao**, which is itself a fork of the original
+[**socquique/TamaPoke**](https://github.com/socquique/TamaPoke) by
+**Quique Tortosa** — the firmware, sprite pipeline, six-language UI and web
+installer all started there.
 
 All sprites: [PMD SpriteCollab](https://github.com/PMDCollab/SpriteCollab)
 (community, CC BY-NC). Base stats: [PokéAPI](https://pokeapi.co). Pokémon is a ™ of
