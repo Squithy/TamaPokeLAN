@@ -846,7 +846,7 @@ bool Pet::switchTo(const PartyMon &m) {
     fullness = joy = energy = 80;
     hygiene = 100;
     poops = 0;
-    weight = 0;
+    weight = 24;
     bond = 0;
     berryKnown = false;
     careMistakes = 0;
