@@ -608,7 +608,7 @@ void Pet::syncClock(uint32_t nowEpoch) {
     }
     if (sleeping) {  // descanso: baja lento y con suelo, igual que en vivo
       energy = clamp100(energy + 6);
-      if (weight > 0 && ageMinutes % 27 == 0) weight--;
+      if (weight > 15 && ageMinutes % 27 == 0) weight--;
       if (ageMinutes % 2 == 0) {
         fullness = dropTo(fullness, 1, 30);
         joy = dropTo(joy, 1, 35);
@@ -616,7 +616,7 @@ void Pet::syncClock(uint32_t nowEpoch) {
       if (ageMinutes % 3 == 0) hygiene = dropTo(hygiene, 1, 45);
       continue;
     }
-    if (weight > 0 && ageMinutes % 9 == 0) weight--;
+    if (weight > 15 && ageMinutes % 9 == 0) weight--;
     fullness = dropTo(fullness, 2, 15);
     energy = dropTo(energy, 1, 15);
     hygiene = dropTo(hygiene, 1, 15);
@@ -1181,7 +1181,7 @@ void Pet::checkMedals() {
   if (streak >= 7) medals |= MED_STREAK7;
   if (bond >= 100) medals |= MED_BOND;
   if (DEX_TBL[speciesId].evolvesTo == 0) medals |= MED_FINAL;
-  if (weight == 20 && level() >= 5 && careMistakes == 0) medals |= MED_FIT;
+  if (weight <= 20 && level() >= 5 && careMistakes == 0) medals |= MED_FIT;
   uint16_t gained = medals & ~before;
   if (gained) {
     for (uint16_t m = gained; m; m &= (m - 1)) totalMedals++;
