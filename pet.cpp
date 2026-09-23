@@ -1655,11 +1655,13 @@ void Pet::feedBerry(uint8_t color) {
   if (lovesBerry(color)) {
     fullness = clamp100(fullness + 35);
     joy = clamp100(joy + 10);
+    weight = clamp100(weight + 1);
     heartUntil = millis() + HEART_MS;  // "le encanta!"
     berryKnown = true;                 // descubierto: se muestra en la ficha
     addBond(2);
   } else {
     fullness = clamp100(fullness + 25);
+    weight = clamp100(weight + 3);
   }
   eatUntil = millis() + EAT_ANIM_MS;
   registerCare();
