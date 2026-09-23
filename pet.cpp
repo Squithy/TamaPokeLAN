@@ -1179,7 +1179,7 @@ void Pet::checkMedals() {
   if (streak >= 7) medals |= MED_STREAK7;
   if (bond >= 100) medals |= MED_BOND;
   if (DEX_TBL[speciesId].evolvesTo == 0) medals |= MED_FINAL;
-  if (weight == 0 && level() >= 5 && careMistakes == 0) medals |= MED_FIT;
+  if (weight == 20 && level() >= 5 && careMistakes == 0) medals |= MED_FIT;
   uint16_t gained = medals & ~before;
   if (gained) {
     for (uint16_t m = gained; m; m &= (m - 1)) totalMedals++;
