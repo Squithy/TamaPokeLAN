@@ -547,7 +547,7 @@ void Pet::begin() {
 void Pet::newEgg() {
   ceremony = CER_NONE;
   neglectTicks = 0;
-  weight = 0;
+  weight = 25;
   speciesId = -1;
   prevSpeciesId = -1;
   for (int i = 0; i < REGION_COUNT; i++) eggByRegion[i] = 0;
@@ -755,7 +755,7 @@ void Pet::reviveFrom(const PartyMon &m) {
   bond = 0;
   bondToday = 0;
   berryKnown = false;
-  weight = 0;
+  weight = 23;
   fullness = joy = energy = 80;
   hygiene = 100;
   poops = 0;
