@@ -667,7 +667,7 @@ void Pet::tick() {
   // El peso aun se quema y el descanso cuenta para la DEF (ver defTick).
   if (sleeping) {
     energy = clamp100(energy + 6);
-    if (weight > 0 && ageMinutes % 6 == 0) weight--;
+    if (weight > 0 && ageMinutes % 27 == 0) weight--;
     if (ageMinutes % 2 == 0) {                 // ~4x mas lento que despierto
       fullness = dropTo(fullness, 1, 30);
       joy = dropTo(joy, 1, 35);
@@ -688,7 +688,7 @@ void Pet::tick() {
   hygiene = clamp100(hygiene - 1 - 4 * poops);
   // el sobrepeso da pereza: la energia cae el doble
   if (weight > 50) energy = clamp100(energy - 1);
-  if (weight > 0 && ageMinutes % 3 == 0) weight--;
+  if (weight > 0 && ageMinutes % 9 == 0) weight--;
 
   defTick(false);  // la calma forja la defensa
 
@@ -1695,8 +1695,9 @@ uint8_t Pet::playResult(uint8_t score) {
   joy = clamp100(joy + 5 + (score > 15 ? 30 : score * 2));
   energy = dropTo(energy, 10 + score / 2, 5);
   fullness = dropTo(fullness, 5, 5);
-  int burn = (int)weight - score * 2;  // el ejercicio quema peso
-  weight = burn > 0 ? burn : 0;
+  uint8_t burn = score / 5;
+  if (burn > 4) burn = 4;
+  weight = (weight > burn) ? (weight - burn) : 0;
   if (score >= 5) heartUntil = millis() + HEART_MS;
   if (score > gameHi) gameHi = score;  // nuevo record
   // Training bonds, and it scales with the session: a token effort is worth the
@@ -1742,8 +1743,9 @@ uint8_t Pet::trainSpeed(uint16_t hits) {
   gain = trSpe - before;
   energy = dropTo(energy, 10, 5);
   fullness = dropTo(fullness, 4, 5);
-  int burn = (int)weight - hits / 2;
-  weight = burn > 0 ? burn : 0;
+  uint8_t burn = hits / 10;
+  if (burn > 4) burn = 4;
+  weight = (weight > burn) ? (weight - burn) : 0;
   joy = clamp100(joy + 4);
   if (hits > spdHi) spdHi = hits;
   // Training bonds, and it scales with the session: a token effort is worth the
@@ -1766,8 +1768,9 @@ uint8_t Pet::trainStrength(uint16_t hits) {
   gain = trAtk - before;            // lo que de verdad subio (puede topar)
   energy = dropTo(energy, 12, 5);   // cansa
   fullness = dropTo(fullness, 5, 5);
-  int burn = (int)weight - hits / 3;  // tambien quema peso
-  weight = burn > 0 ? burn : 0;
+  uint8_t burn = hits / 10;
+  if (burn > 4) burn = 4;
+  weight = (weight > burn) ? (weight - burn) : 0;
   joy = clamp100(joy + 6);
   if (hits >= 20) heartUntil = millis() + HEART_MS;
   if (hits > strHi) strHi = hits;   // record de golpes
